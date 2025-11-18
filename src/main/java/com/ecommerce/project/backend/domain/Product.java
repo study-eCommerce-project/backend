@@ -57,6 +57,7 @@ public class Product {
 
     // product_image (1:N 매핑)
     @OneToMany(mappedBy = "product", cascade = CascadeType.ALL, orphanRemoval = true)
+    @Builder.Default
     private List<ProductImage> images = new ArrayList<>();
 
     // 옵션 상품 (1:N 매핑)
@@ -65,6 +66,7 @@ public class Product {
 
     //CategoryLink
     @OneToMany(mappedBy = "product", cascade = CascadeType.ALL)
+    @Builder.Default
     private List<CategoryLink> categoryLinks = new ArrayList<>();
 
     // -------------------------------------------------------

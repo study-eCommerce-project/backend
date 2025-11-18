@@ -19,6 +19,7 @@ public class Member {
     private String phone;
     private String address;
 
+    @Builder.Default
     private String role = "USER";
 }
 
