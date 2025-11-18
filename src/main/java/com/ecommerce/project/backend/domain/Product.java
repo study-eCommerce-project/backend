@@ -116,4 +116,10 @@ public class Product {
         }
         this.sellPrice = newSellPrice;
     }
+
+    //    상품 상세 설명
+    public void updateDescription(String description) {
+        this.description = description;
+    }
+
 }
