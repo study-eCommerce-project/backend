@@ -1,39 +1,54 @@
 package com.ecommerce.project.backend.controller;
 
-import com.ecommerce.project.backend.dto.CartDto;
+import com.ecommerce.project.backend.domain.Member;
+import com.ecommerce.project.backend.dto.*;
 import com.ecommerce.project.backend.service.CartService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
 @RestController
-@RequestMapping("/api/cart")
 @RequiredArgsConstructor
-@CrossOrigin(origins = "http://localhost:3000") // 필요 시 CORS 추가
+@RequestMapping("/api/cart")
 public class CartController {
 
     private final CartService cartService;
 
-    // 장바구니 담기
     @PostMapping
-    public ResponseEntity<CartDto> addToCart(@RequestBody CartDto cartDto) {
-        CartDto saved = cartService.addToCart(cartDto);
-        return ResponseEntity.ok(saved);
+    public void addToCart(
+            @AuthenticationPrincipal Member member,
+            @RequestBody CartAddRequestDto req
+    ) {
+        cartService.addToCart(member.getId(), req);
     }
 
-    // 회원별 장바구니 조회
-    @GetMapping("/{memberId}")
-    public ResponseEntity<List<CartDto>> getCartByMember(@PathVariable Long memberId) {
-        List<CartDto> cartList = cartService.getCartByMember(memberId);
-        return ResponseEntity.ok(cartList);
+
+    @GetMapping
+    public CartResponseDto getCart(@AuthenticationPrincipal Member member) {
+        return cartService.getCart(member.getId());
     }
 
-    // 장바구니 항목 삭제
+    @PutMapping("/quantity")
+    public void updateQuantity(@AuthenticationPrincipal Member member,
+                               @RequestBody CartUpdateQuantityDto req) {
+        cartService.updateQuantity(req.getCartId(), req.getQuantity());
+    }
+
+    @PutMapping("/option")
+    public void changeOption(@AuthenticationPrincipal Member member,
+                             @RequestBody CartChangeOptionDto req) {
+        cartService.changeOption(member.getId(), req.getCartId(), req.getNewOptionId());
+    }
+
+
     @DeleteMapping("/{cartId}")
-    public ResponseEntity<Void> deleteCartItem(@PathVariable Long cartId) {
-        cartService.deleteCartItem(cartId);
-        return ResponseEntity.noContent().build();
+    public void delete(@AuthenticationPrincipal Member member,
+                       @PathVariable Long cartId) {
+        cartService.delete(cartId, member.getId());
     }
+
 }
+
