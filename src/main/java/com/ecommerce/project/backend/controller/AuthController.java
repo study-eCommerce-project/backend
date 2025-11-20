@@ -1,26 +1,73 @@
 package com.ecommerce.project.backend.controller;
 
 import com.ecommerce.project.backend.domain.Member;
+import com.ecommerce.project.backend.dto.LoginRequestDto;
 import com.ecommerce.project.backend.dto.MemberDto;
+import com.ecommerce.project.backend.repository.MemberRepository;
 import lombok.RequiredArgsConstructor;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
+
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.web.bind.annotation.*;
+
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpSession;
 
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/api/auth")
+@CrossOrigin(origins = "http://localhost:3000", allowCredentials = "true")
 public class AuthController {
 
-    /** 로그인된 사용자 정보 조회 */
-    @GetMapping("/me")
-    public MemberDto getCurrentUser(@AuthenticationPrincipal Member member) {
+    private final MemberRepository memberRepository;
+    private final BCryptPasswordEncoder encoder = new BCryptPasswordEncoder(); // ⭐ 추가
 
-        // 로그인 안 한 상태
+    /** 로그인 */
+    @PostMapping("/login")
+    public ResponseEntity<?> login(@RequestBody LoginRequestDto req,
+                                   HttpServletRequest request) {
+
+        Member member = memberRepository.findByEmail(req.getEmail()).orElse(null);
         if (member == null) {
-            return null;
+            return ResponseEntity.status(404).body("NO_USER");
         }
 
-        // 로그인 된 사용자 정보 반환
-        return MemberDto.fromEntity(member);
+        // ⭐ BCrypt 비밀번호 검증
+        if (!encoder.matches(req.getPassword(), member.getPassword())) {
+            return ResponseEntity.status(401).body("WRONG_PASSWORD");
+        }
+
+        // ⭐ 세션 생성 + 로그인 정보 저장
+        HttpSession session = request.getSession(true);
+        session.setAttribute("loginMember", member);
+
+        return ResponseEntity.ok("OK");
+    }
+
+
+    /** 현재 로그인 사용자 조회 */
+    @GetMapping("/me")
+    public ResponseEntity<?> getCurrentUser(HttpServletRequest request) {
+
+        HttpSession session = request.getSession(false);
+        if (session == null) return ResponseEntity.status(401).build();
+
+        Member member = (Member) session.getAttribute("loginMember");
+        if (member == null) return ResponseEntity.status(401).build();
+
+        return ResponseEntity.ok(MemberDto.fromEntity(member));
+    }
+
+
+    /** 로그아웃 */
+    @PostMapping("/logout")
+    public ResponseEntity<?> logout(HttpServletRequest request) {
+
+        HttpSession session = request.getSession(false);
+        if (session != null) {
+            session.invalidate();
+        }
+
+        return ResponseEntity.ok("LOGOUT");
     }
 }

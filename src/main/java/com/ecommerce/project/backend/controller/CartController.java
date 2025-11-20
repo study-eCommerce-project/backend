@@ -1,14 +1,15 @@
 package com.ecommerce.project.backend.controller;
 
 import com.ecommerce.project.backend.domain.Member;
-import com.ecommerce.project.backend.dto.*;
+import com.ecommerce.project.backend.dto.CartAddRequestDto;
+import com.ecommerce.project.backend.dto.CartChangeOptionDto;
+import com.ecommerce.project.backend.dto.CartUpdateQuantityDto;
 import com.ecommerce.project.backend.service.CartService;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpSession;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
-
-import java.util.List;
 
 @RestController
 @RequiredArgsConstructor
@@ -17,38 +18,73 @@ public class CartController {
 
     private final CartService cartService;
 
-    @PostMapping
-    public void addToCart(
-            @AuthenticationPrincipal Member member,
-            @RequestBody CartAddRequestDto req
-    ) {
-        cartService.addToCart(member.getId(), req);
+    /** 세션에서 로그인 사용자 꺼내기 */
+    private Member getLoginMember(HttpServletRequest request) {
+        HttpSession session = request.getSession(false);
+
+        if (session == null)
+            throw new RuntimeException("로그인 필요");
+
+        Member member = (Member) session.getAttribute("loginMember");
+
+        if (member == null)
+            throw new RuntimeException("로그인 필요");
+
+        return member;
     }
 
-
+    /** 장바구니 조회 */
     @GetMapping
-    public CartResponseDto getCart(@AuthenticationPrincipal Member member) {
-        return cartService.getCart(member.getId());
+    public ResponseEntity<?> getCart(HttpServletRequest request) {
+        Member member = getLoginMember(request);
+        return ResponseEntity.ok(cartService.getCart(member.getId()));
     }
 
+    /** 장바구니 추가 */
+    @PostMapping
+    public ResponseEntity<?> addToCart(HttpServletRequest request,
+                                       @RequestBody CartAddRequestDto req) {
+
+        Member member = getLoginMember(request);
+
+        System.out.println("받은 데이터 = productId=" + req.getProductId()
+                + ", optionId=" + req.getOptionId()
+                + ", quantity=" + req.getQuantity());
+
+        cartService.addToCart(member.getId(), req);
+        return ResponseEntity.ok().build();
+    }
+
+    /** 수량 변경 */
     @PutMapping("/quantity")
-    public void updateQuantity(@AuthenticationPrincipal Member member,
-                               @RequestBody CartUpdateQuantityDto req) {
+    public ResponseEntity<?> updateQuantity(HttpServletRequest request,
+                                            @RequestBody CartUpdateQuantityDto req) {
+
+        Member member = getLoginMember(request);
+
         cartService.updateQuantity(req.getCartId(), req.getQuantity());
+        return ResponseEntity.ok().build();
     }
 
+    /** 옵션 변경 */
     @PutMapping("/option")
-    public void changeOption(@AuthenticationPrincipal Member member,
-                             @RequestBody CartChangeOptionDto req) {
+    public ResponseEntity<?> changeOption(HttpServletRequest request,
+                                          @RequestBody CartChangeOptionDto req) {
+
+        Member member = getLoginMember(request);
+
         cartService.changeOption(member.getId(), req.getCartId(), req.getNewOptionId());
+        return ResponseEntity.ok().build();
     }
 
-
+    /** 장바구니 삭제 */
     @DeleteMapping("/{cartId}")
-    public void delete(@AuthenticationPrincipal Member member,
-                       @PathVariable Long cartId) {
+    public ResponseEntity<?> delete(HttpServletRequest request,
+                                    @PathVariable Long cartId) {
+
+        Member member = getLoginMember(request);
+
         cartService.delete(cartId, member.getId());
+        return ResponseEntity.ok().build();
     }
-
 }
-

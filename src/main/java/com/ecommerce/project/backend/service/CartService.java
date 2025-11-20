@@ -1,10 +1,8 @@
 package com.ecommerce.project.backend.service;
 
+import com.ecommerce.project.backend.config.MusinsaConfig;
 import com.ecommerce.project.backend.domain.*;
-import com.ecommerce.project.backend.dto.CartAddRequestDto;
-import com.ecommerce.project.backend.dto.CartItemDto;
-import com.ecommerce.project.backend.dto.CartResponseDto;
-import com.ecommerce.project.backend.dto.OptionDto;
+import com.ecommerce.project.backend.dto.*;
 import com.ecommerce.project.backend.repository.*;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -22,11 +20,11 @@ public class CartService {
     private final CartRepository cartRepository;
     private final ProductRepository productRepository;
     private final ProductOptionRepository optionRepository;
-    private final ProductService productService;
+    private final MusinsaConfig musinsaConfig;
+
 
     /** 장바구니 담기 */
     public void addToCart(Long memberId, CartAddRequestDto req) {
-
 
         Member member = memberRepository.findById(memberId)
                 .orElseThrow(() -> new RuntimeException("회원 없음"));
@@ -37,15 +35,14 @@ public class CartService {
         boolean isOptionProduct = product.getIsOption();
 
         if (isOptionProduct) {
+
             ProductOption option = optionRepository.findById(req.getOptionId())
                     .orElseThrow(() -> new RuntimeException("옵션 없음"));
 
-            // 재고 체크
             if (option.getStock() < req.getQuantity()) {
                 throw new IllegalArgumentException("재고 부족");
             }
 
-            // 중복 cart
             Optional<Cart> existing = cartRepository
                     .findByMember_IdAndProduct_ProductIdAndOption_OptionId(
                             memberId, req.getProductId(), req.getOptionId());
@@ -64,15 +61,13 @@ public class CartService {
                     .option(option)
                     .quantity(req.getQuantity())
                     .build());
-        }
 
-        else {
-            // 단일상품
+        } else {
+
             if (product.getStock() < req.getQuantity()) throw new RuntimeException("재고 없음");
 
             Optional<Cart> existing = cartRepository
-                    .findByMember_IdAndProduct_ProductIdAndOptionIsNull(
-                            memberId, req.getProductId());
+                    .findByMember_IdAndProduct_ProductIdAndOptionIsNull(memberId, req.getProductId());
 
             if (existing.isPresent()) {
                 Cart cart = existing.get();
@@ -82,14 +77,12 @@ public class CartService {
                 return;
             }
 
-            cartRepository.save(
-                    Cart.builder()
-                            .member(member)
-                            .product(product)
-                            .option(null)
-                            .quantity(req.getQuantity())
-                            .build()
-            );
+            cartRepository.save(Cart.builder()
+                    .member(member)
+                    .product(product)
+                    .option(null)
+                    .quantity(req.getQuantity())
+                    .build());
         }
     }
 
@@ -99,9 +92,23 @@ public class CartService {
 
         List<Cart> carts = cartRepository.findByMember_Id(memberId);
 
+        String baseUrl = musinsaConfig.getImageBaseUrl();
+
         List<CartItemDto> items = carts.stream().map(cart -> {
             Product p = cart.getProduct();
             ProductOption o = cart.getOption();
+
+            // 🔥 메인 이미지 절대경로 조립
+            String mainImg = p.getMainImg();
+            String fullImg = null;
+
+            if (mainImg != null) {
+                if (mainImg.startsWith("/")) {
+                    fullImg = baseUrl + mainImg;
+                } else {
+                    fullImg = baseUrl + "/" + mainImg;
+                }
+            }
 
             boolean soldOut = (o == null) ? p.getStock() <= 0 : o.getStock() <= 0;
 
@@ -109,7 +116,10 @@ public class CartService {
                     .cartId(cart.getCartId())
                     .productId(p.getProductId())
                     .productName(p.getProductName())
-                    .thumbnail(p.getMainImg())
+
+                    // 🔥 절대경로 넣기
+                    .thumbnail(fullImg)
+
                     .quantity(cart.getQuantity())
                     .price(p.getSellPrice().intValue())
                     .stock(o == null ? p.getStock() : o.getStock())
@@ -139,6 +149,7 @@ public class CartService {
                 .build();
     }
 
+
     @Transactional
     public void updateQuantity(Long cartId, int quantity) {
 
@@ -148,16 +159,10 @@ public class CartService {
         Product product = cart.getProduct();
         ProductOption option = cart.getOption();
 
-        // 옵션 상품인지 단일 상품인지 구분
         int stock = (option == null) ? product.getStock() : option.getStock();
 
-        if (quantity <= 0) {
-            throw new IllegalArgumentException("수량은 1 이상이어야 합니다.");
-        }
-
-        if (stock < quantity) {
-            throw new IllegalArgumentException("재고 부족");
-        }
+        if (quantity <= 0) throw new IllegalArgumentException("수량은 1 이상이어야 합니다.");
+        if (stock < quantity) throw new RuntimeException("재고 부족");
 
         cart.setQuantity(quantity);
     }
@@ -168,28 +173,23 @@ public class CartService {
         Cart cart = cartRepository.findById(cartId)
                 .orElseThrow(() -> new RuntimeException("장바구니 항목 없음"));
 
-        // 본인 장바구니인지 검증 (보안)
         if (!cart.getMember().getId().equals(memberId)) {
             throw new RuntimeException("다른 사용자의 장바구니 수정 불가");
         }
 
         Product product = cart.getProduct();
 
-        // 상품이 옵션 상품인지 확인
         if (!product.getIsOption()) {
             throw new RuntimeException("단일상품은 옵션 변경 불가");
         }
 
-        // 변경할 옵션 조회
         ProductOption newOption = optionRepository.findById(newOptionId)
                 .orElseThrow(() -> new RuntimeException("옵션 없음"));
 
-        // 재고 확인
         if (newOption.getStock() < cart.getQuantity()) {
             throw new RuntimeException("재고 부족");
         }
 
-        // 옵션 변경
         cart.setOption(newOption);
     }
 
@@ -199,18 +199,10 @@ public class CartService {
         Cart cart = cartRepository.findById(cartId)
                 .orElseThrow(() -> new RuntimeException("장바구니 항목 없음"));
 
-        // 본인 장바구니인지 검증
         if (!cart.getMember().getId().equals(memberId)) {
             throw new RuntimeException("다른 사용자의 장바구니 삭제 불가");
         }
 
         cartRepository.delete(cart);
     }
-
-
-
-
 }
-
-
-
