@@ -2,9 +2,7 @@ package com.ecommerce.project.backend.service;
 
 import com.ecommerce.project.backend.config.MusinsaConfig;
 import com.ecommerce.project.backend.domain.Product;
-import com.ecommerce.project.backend.domain.ProductLike;
 import com.ecommerce.project.backend.domain.ProductOption;
-<<<<<<< HEAD
 import com.ecommerce.project.backend.domain.CategoryLink;
 import com.ecommerce.project.backend.dto.OptionDto;
 import com.ecommerce.project.backend.dto.ProductDetailResponseDto;
@@ -16,19 +14,10 @@ import com.ecommerce.project.backend.repository.CategoryLinkRepository;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
-=======
 import com.ecommerce.project.backend.dto.ProductDetailDto;
-import com.ecommerce.project.backend.dto.ProductDto;
 import com.ecommerce.project.backend.repository.ProductLikeRepository;
-import com.ecommerce.project.backend.repository.ProductOptionRepository;
-import com.ecommerce.project.backend.repository.ProductRepository;
-import jakarta.servlet.http.HttpSession;
-import jakarta.transaction.Transactional;
-import lombok.RequiredArgsConstructor;
-import org.springframework.http.ResponseEntity;
->>>>>>> Jinsoek
 import org.springframework.stereotype.Service;
-import org.springframework.web.bind.annotation.GetMapping;
+
 
 
 import java.util.List;
@@ -42,15 +31,12 @@ public class ProductService {
     private final ProductRepository productRepository;
     private final MusinsaConfig musinsaConfig;
     private final ProductOptionRepository optionRepository;
-<<<<<<< HEAD
     private final CategoryLinkRepository categoryLinkRepository;   // ⭐ 추가됨!
     private final ProductImageRepository productImageRepository;
+
     @Autowired
     private final CategoryTreeService categoryTreeService;
-
-=======
     private final ProductLikeRepository likeRepository;
->>>>>>> Jinsoek
 
 
     /** 전체 상품 (노출 중인 상품만) */
