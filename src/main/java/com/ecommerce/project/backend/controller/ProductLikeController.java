@@ -62,13 +62,14 @@ public class ProductLikeController {
             HttpSession session) {
 
         Member loginMember = (Member) session.getAttribute("loginMember");
-        if (loginMember == null) return ResponseEntity.status(401).body("로그인 필요");
-        Long memberId = loginMember.getId();
-        if (memberId == null) {
+
+        if (loginMember == null || loginMember.getId() == null) {
             return ResponseEntity.status(401).body("로그인 필요");
         }
 
+        Long memberId = loginMember.getId();
         boolean liked = likeService.toggleLike(memberId, productId);
+
         return ResponseEntity.ok(liked);
     }
 
