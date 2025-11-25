@@ -12,7 +12,7 @@ public class MemberDto {
 
     private Long id;
     private String email;
-    private String password;
+    private String password; // 회원가입 시만 사용
     private String name;
     private String phone;
     private String address;
@@ -24,7 +24,7 @@ public class MemberDto {
         return MemberDto.builder()
                 .id(member.getId())
                 .email(member.getEmail())
-                .password(null) // 보안상 응답에는 비밀번호를 포함시키지 않음
+                .password(null) // 비밀번호는 절대 노출 X
                 .name(member.getName())
                 .phone(member.getPhone())
                 .address(member.getAddress())
@@ -38,14 +38,12 @@ public class MemberDto {
         return Member.builder()
                 .id(this.id)
                 .email(this.email)
-                .password(this.password) // 입력 시만 사용됨
+                .password(this.password) // 회원가입 시만 입력됨
                 .name(this.name)
                 .phone(this.phone)
                 .address(this.address)
                 .addressDetail(this.addressDetail)
-                .role(this.role != null ? this.role : "USER")
+                .role(this.role != null ? this.role : "USER") // 기본값 USER
                 .build();
     }
-
 }
-

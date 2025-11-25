@@ -42,6 +42,7 @@
 
 package com.ecommerce.project.backend.controller;
 
+import com.ecommerce.project.backend.domain.Member;
 import com.ecommerce.project.backend.service.ProductLikeService;
 import jakarta.servlet.http.HttpSession;
 import lombok.RequiredArgsConstructor;
@@ -60,8 +61,9 @@ public class ProductLikeController {
             @PathVariable Long productId,
             HttpSession session) {
 
-        Long memberId = (Long) session.getAttribute("memberId");
-
+        Member loginMember = (Member) session.getAttribute("loginMember");
+        if (loginMember == null) return ResponseEntity.status(401).body("로그인 필요");
+        Long memberId = loginMember.getId();
         if (memberId == null) {
             return ResponseEntity.status(401).body("로그인 필요");
         }
@@ -73,7 +75,9 @@ public class ProductLikeController {
     @GetMapping("/my")
     public ResponseEntity<?> getMyLikes(HttpSession session) {
 
-        Long memberId = (Long) session.getAttribute("memberId");
+        Member loginMember = (Member) session.getAttribute("loginMember");
+        if (loginMember == null) return ResponseEntity.status(401).body("로그인 필요");
+        Long memberId = loginMember.getId();
 
         if (memberId == null) {
             return ResponseEntity.status(401).body("로그인 필요");

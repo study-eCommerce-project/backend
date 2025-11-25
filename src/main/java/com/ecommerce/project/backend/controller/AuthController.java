@@ -38,7 +38,7 @@ public class AuthController {
 
         // ⭐ 세션 저장 키 통일
         HttpSession session = request.getSession(true);
-        session.setAttribute("user", member);
+        session.setAttribute("loginMember", member);
 
         // ⭐ 로그인 후 user 정보 반환
         return ResponseEntity.ok(MemberDto.fromEntity(member));
@@ -52,7 +52,7 @@ public class AuthController {
         HttpSession session = request.getSession(false);
         if (session == null) return ResponseEntity.status(401).build();
 
-        Member member = (Member) session.getAttribute("user");
+        Member member = (Member) session.getAttribute("loginMember");
         if (member == null) return ResponseEntity.status(401).build();
 
         return ResponseEntity.ok(MemberDto.fromEntity(member));
