@@ -22,24 +22,29 @@ public class ProductLikeController {
             @PathVariable Long productId,
             HttpSession session) {
 
-        Member member = (Member) session.getAttribute("loginMember");
-        if (member == null) {
+        Member loginMember = (Member) session.getAttribute("loginMember");
+
+        if (loginMember == null || loginMember.getId() == null) {
             return ResponseEntity.status(401).body("로그인 필요");
         }
 
-        boolean liked = likeService.toggleLike(member.getId(), productId);
+        Long memberId = loginMember.getId();
+        boolean liked = likeService.toggleLike(memberId, productId);
+
         return ResponseEntity.ok(liked);
     }
 
     @GetMapping("/my")
     public ResponseEntity<?> getMyLikes(HttpSession session) {
+        Member loginMember = (Member) session.getAttribute("loginMember");
+        if (loginMember == null) return ResponseEntity.status(401).body("로그인 필요");
+        Long memberId = loginMember.getId();
 
-        Member member = (Member) session.getAttribute("loginMember");
-        if (member == null) {
+        if (memberId == null) {
             return ResponseEntity.status(401).body("로그인 필요");
         }
 
-        List<ProductDto> wishlist = likeService.getMyLikeProducts(member.getId());
+        List<ProductDto> wishlist = likeService.getMyLikeProducts(loginMember.getId());
         return ResponseEntity.ok(wishlist);
     }
 }
