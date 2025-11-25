@@ -27,18 +27,6 @@ public class ProductController {
         return productService.getAllVisibleProducts();
     }
 
-    /** 단일 상품 상세 조회 */
-    @GetMapping("/{id}")
-    public ResponseEntity<?> getProductById(@PathVariable Long id) {
-        try {
-            ProductDto product = productService.getProductById(id);
-            return ResponseEntity.ok(product);
-        } catch (IllegalArgumentException e) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(e.getMessage());
-        } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("서버 오류가 발생했습니다.");
-        }
-    }
 
     /** 상품명 검색 */
     @GetMapping("/search")
@@ -52,16 +40,25 @@ public class ProductController {
         return productService.getProductsByCategoryCode(code);
     }
 
+    /** ⭐ 단일 상품 상세 조회 (상세페이지) - 이 API 하나만 사용 */
     @GetMapping("/{productId}")
     public ResponseEntity<?> getProductDetail(
             @PathVariable Long productId,
             HttpSession session
     ) {
-        Long memberId = (Long) session.getAttribute("memberId");
+        try {
+            Long memberId = (Long) session.getAttribute("memberId");
+            ProductDetailDto dto = productService.getProductDetail(productId, memberId);
+            return ResponseEntity.ok(dto);
 
-        ProductDetailDto dto = productService.getProductDetail(productId, memberId);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(e.getMessage());
 
-        return ResponseEntity.ok(dto);
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body("서버 오류가 발생했습니다.");
+        }
     }
 
 

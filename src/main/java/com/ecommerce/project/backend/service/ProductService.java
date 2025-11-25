@@ -47,14 +47,6 @@ public class ProductService {
                 .collect(Collectors.toList());
     }
 
-    /** 단일 상품 조회 */
-    public ProductDto getProductById(Long id) {
-        String baseUrl = musinsaConfig.getImageBaseUrl();
-
-        Product p = productRepository.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 상품입니다. ID: " + id));
-        return ProductDto.fromEntity(p, baseUrl); // baseUrl 전달
-    }
 
     /** 상품명 검색 */
     public List<ProductDto> searchProductsByName(String keyword) {
@@ -104,21 +96,25 @@ public class ProductService {
         product.setProductStatus(allSoldOut ? 20 : 10);
     }
 
+    /** ⭐ 단일 상품 상세 조회 (좋아요 + 옵션 포함) */
     public ProductDetailDto getProductDetail(Long productId, Long memberId) {
 
         Product product = productRepository.findById(productId)
-                .orElseThrow(() -> new RuntimeException("상품 없음"));
-
+                .orElseThrow(() -> new IllegalArgumentException("상품 없음 (ID: " + productId + ")"));
         // 좋아요 여부
         boolean liked = false;
         if (memberId != null) {
             liked = likeRepository.existsByMemberIdAndProductId(memberId, productId);
         }
-
-        // 좋아요 수 COUNT()
+        // 좋아요 수
         Long likeCount = likeRepository.countByProductId(productId);
 
-        return ProductDetailDto.from(product, liked, likeCount, musinsaConfig.getImageBaseUrl());
+        return ProductDetailDto.from(
+                product,
+                liked,
+                likeCount,
+                musinsaConfig.getImageBaseUrl()
+        );
     }
 
 
