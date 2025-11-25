@@ -1,14 +1,17 @@
 package com.ecommerce.project.backend.controller;
 
 import com.ecommerce.project.backend.dto.ProductDetailResponseDto;
+import com.ecommerce.project.backend.dto.ProductDetailDto;
 import com.ecommerce.project.backend.dto.ProductDto;
 import com.ecommerce.project.backend.service.ProductService;
+import jakarta.servlet.http.HttpSession;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+
 @RestController
 @RequestMapping("/api/products")
 @RequiredArgsConstructor
@@ -34,12 +37,6 @@ public class ProductController {
         }
     }
 
-    /** 상세 정보 (옵션 + 카테고리 포함) */
-    @GetMapping("/{id}/detail")
-    public ResponseEntity<ProductDetailResponseDto> getProductDetail(@PathVariable Long id) {
-        return ResponseEntity.ok(productService.getProductDetail(id));
-    }
-
     /** 상품명 검색 */
     @GetMapping("/search")
     public List<ProductDto> searchProducts(@RequestParam String keyword) {
@@ -51,4 +48,16 @@ public class ProductController {
     public List<ProductDto> getProductsByCategory(@PathVariable("code") String code) {
         return productService.getProductsByCategoryCode(code);
     }
+
+    /** 상품 상세 조회 (옵션 + 카테고리 + 사용자 찜 여부 등) */
+    @GetMapping("/{productId}")
+    public ResponseEntity<?> getProductDetail(
+            @PathVariable Long productId,
+            HttpSession session
+    ) {
+        Long memberId = (Long) session.getAttribute("memberId");
+        ProductDetailDto dto = productService.getProductDetail(productId, memberId);
+        return ResponseEntity.ok(dto);
+    }
+
 }
