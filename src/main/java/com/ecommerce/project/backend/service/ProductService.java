@@ -2,23 +2,20 @@ package com.ecommerce.project.backend.service;
 
 import com.ecommerce.project.backend.config.MusinsaConfig;
 import com.ecommerce.project.backend.domain.Product;
-import com.ecommerce.project.backend.domain.ProductLike;
-import com.ecommerce.project.backend.domain.ProductOption;
-import com.ecommerce.project.backend.dto.ProductDetailDto;
+import com.ecommerce.project.backend.dto.OptionDto;
+import com.ecommerce.project.backend.dto.ProductDetailResponseDto;
 import com.ecommerce.project.backend.dto.ProductDto;
-import com.ecommerce.project.backend.repository.ProductLikeRepository;
+import com.ecommerce.project.backend.repository.ProductImageRepository;
 import com.ecommerce.project.backend.repository.ProductOptionRepository;
 import com.ecommerce.project.backend.repository.ProductRepository;
-import jakarta.servlet.http.HttpSession;
+import com.ecommerce.project.backend.repository.CategoryLinkRepository;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
-import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
-import org.springframework.web.bind.annotation.GetMapping;
+
 
 import java.util.List;
 import java.util.stream.Collectors;
-
 @Service
 @RequiredArgsConstructor
 @Transactional
@@ -27,95 +24,94 @@ public class ProductService {
     private final ProductRepository productRepository;
     private final MusinsaConfig musinsaConfig;
     private final ProductOptionRepository optionRepository;
-    private final ProductLikeRepository likeRepository;
+    private final CategoryLinkRepository categoryLinkRepository;
+    private final ProductImageRepository productImageRepository;
+    private final CategoryTreeService categoryTreeService;
 
-
-    /** 전체 상품 (노출 중인 상품만) */
+    /** 전체 상품 조회 */
     public List<ProductDto> getAllVisibleProducts() {
         String baseUrl = musinsaConfig.getImageBaseUrl();
-        List<Product> products = productRepository.findAllVisibleProducts();
-
-        if (products == null || products.isEmpty()) {
-            System.out.println("[ProductService] 노출 중인 상품이 없습니다.");
-            return List.of();
-        }
-
-        System.out.println("[ProductService] 조회된 상품 수: " + products.size());
-
-        return products.stream()
+        return productRepository.findAllVisibleProducts()
+                .stream()
                 .map(p -> ProductDto.fromEntity(p, baseUrl))
                 .collect(Collectors.toList());
     }
 
+    /** 단일 상품 (기본 정보) */
+    public ProductDto getProductById(Long id) {
+        String baseUrl = musinsaConfig.getImageBaseUrl();
+        Product p = productRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 상품입니다."));
+        return ProductDto.fromEntity(p, baseUrl);
+    }
 
-    /** 상품명 검색 */
+    /** 검색 */
     public List<ProductDto> searchProductsByName(String keyword) {
         String baseUrl = musinsaConfig.getImageBaseUrl();
-
         return productRepository.findByProductNameContaining(keyword)
                 .stream()
                 .map(p -> ProductDto.fromEntity(p, baseUrl))
                 .collect(Collectors.toList());
     }
 
-    /** 카테고리 코드별 조회 */
-    public List<ProductDto> getProductsByCategoryCode(String categoryCode) {
+    /** 카테고리 조회 */
+    public List<ProductDto> getProductsByCategoryCode(String code) {
         String baseUrl = musinsaConfig.getImageBaseUrl();
-
-        return productRepository.findByCategoryCode(categoryCode)
+        return productRepository.findByCategoryCode(code)
                 .stream()
                 .map(p -> ProductDto.fromEntity(p, baseUrl))
                 .collect(Collectors.toList());
     }
 
-    public void updateProductStatus(Long productId) {
+    /** 상세 정보 (옵션 + 이미지 + 카테고리) */
+    public ProductDetailResponseDto getProductDetail(Long productId) {
 
-        Product product = productRepository.findById(productId)
-                .orElseThrow(() -> new RuntimeException("상품 없음"));
+        String baseUrl = musinsaConfig.getImageBaseUrl();
 
-        boolean isOption = product.getIsOption();
+        // 상품
+        Product p = productRepository.findById(productId)
+                .orElseThrow(() -> new IllegalArgumentException("상품 없음: " + productId));
 
-        // 단일상품 처리
-        if (!isOption) {
-            product.setProductStatus(product.getStock() <= 0 ? 20 : 10);
-            return;
+        // 옵션
+        List<OptionDto> options = optionRepository.findByProduct_ProductId(productId)
+                .stream()
+                .map(OptionDto::fromEntity)
+                .collect(Collectors.toList());
+
+        // 이미지
+        List<String> subImages = productImageRepository
+                .findByProduct_ProductIdOrderBySortOrderAsc(productId)
+                .stream()
+                .map(img -> img.getImageUrl())
+                .collect(Collectors.toList());
+
+        // 카테고리 코드 목록
+        List<String> codes = categoryLinkRepository.findByProduct_ProductId(productId)
+                .stream()
+                .map(c -> c.getCategoryCode())
+                .collect(Collectors.toList());
+
+        // 카테고리 경로 생성
+        String categoryPath = null;
+        if (!codes.isEmpty()) {
+            categoryPath = categoryTreeService.getCategoryPath(codes.get(0));
         }
 
-        // 옵션상품 처리
-        List<ProductOption> options = optionRepository.findByProduct_ProductId(productId);
-
-        int totalStock = options.stream()
-                .mapToInt(ProductOption::getStock)
-                .sum();
-
-        product.setStock(totalStock);
-
-        boolean allSoldOut = options.stream()
-                .allMatch(o -> o.getStock() <= 0);
-
-        product.setProductStatus(allSoldOut ? 20 : 10);
+        return ProductDetailResponseDto.builder()
+                .productId(p.getProductId())
+                .productName(p.getProductName())
+                .description(p.getDescription())
+                .consumerPrice(p.getConsumerPrice())
+                .sellPrice(p.getSellPrice())
+                .stock(p.getStock())
+                .isOption(p.getIsOption())
+                .mainImg(p.getMainImg())
+                .subImages(subImages)
+                .productStatus(p.getProductStatus())
+                .isShow(p.getIsShow())
+                .categoryPath(categoryPath)
+                .categories(codes)
+                .options(options)
+                .build();
     }
-
-    /** ⭐ 단일 상품 상세 조회 (좋아요 + 옵션 포함) */
-    public ProductDetailDto getProductDetail(Long productId, Long memberId) {
-
-        Product product = productRepository.findById(productId)
-                .orElseThrow(() -> new IllegalArgumentException("상품 없음 (ID: " + productId + ")"));
-        // 좋아요 여부
-        boolean liked = false;
-        if (memberId != null) {
-            liked = likeRepository.existsByMemberIdAndProductId(memberId, productId);
-        }
-        // 좋아요 수
-        Long likeCount = likeRepository.countByProductId(productId);
-
-        return ProductDetailDto.from(
-                product,
-                liked,
-                likeCount,
-                musinsaConfig.getImageBaseUrl()
-        );
-    }
-
-
 }
