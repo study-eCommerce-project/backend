@@ -43,21 +43,22 @@ public class SecurityConfig {
     public BCryptPasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder();
     }
-
+    
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration config = new CorsConfiguration();
 
-        config.addAllowedOrigin("http://localhost:3000");  // 로컬 개발용
-        config.addAllowedOrigin("https://frontend-green-one-32.vercel.app");  // 커스텀 도메인 연결용
-        config.addAllowedOrigin("https://frontend-bes01bkz1-limyuhaas-projects.vercel.app");  // Vercel 배포 프론트 허용
+        config.addAllowedOriginPattern("http://localhost:3000");  // 로컬 개발용
+        config.addAllowedOriginPattern("https://frontend-green-one-32.vercel.app");  // 커스텀 도메인 연결용
+        config.addAllowedOriginPattern("https://frontend-bes01bkz1-limyuhaas-projects.vercel.app");  // Vercel 배포 프론트 허용
 
         config.addAllowedMethod("*");
         config.addAllowedHeader("*");
-        config.setAllowCredentials(true); // 세션 쿠키 허용
+        config.setAllowCredentials(true);
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", config);
         return source;
     }
+
 }
