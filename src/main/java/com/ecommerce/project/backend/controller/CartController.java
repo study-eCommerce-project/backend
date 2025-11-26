@@ -18,26 +18,45 @@ public class CartController {
 
     private final CartService cartService;
 
-    /** 세션에서 로그인 사용자 꺼내기 */
+    /** 세션에서 로그인 사용자 꺼내기 (안전한 버전) */
     private Member getLoginMember(HttpServletRequest request) {
         HttpSession session = request.getSession(false);
 
-        if (session == null)
-            throw new RuntimeException("로그인 필요");
+        if (session == null) {
+            throw new IllegalStateException("NO_SESSION");
+        }
 
         Member member = (Member) session.getAttribute("loginMember");
 
-        if (member == null)
-            throw new RuntimeException("로그인 필요");
+        if (member == null) {
+            throw new IllegalStateException("NO_USER");
+        }
 
         return member;
+    }
+
+    /** 공통 예외 처리 */
+    private ResponseEntity<?> handleAuth(Runnable runnable) {
+        try {
+            runnable.run();
+            return ResponseEntity.ok().build();
+        } catch (IllegalStateException e) {
+            return ResponseEntity.status(401).body(e.getMessage()); // 로그인 안됨
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.status(400).body("BAD_REQUEST");
+        }
     }
 
     /** 장바구니 조회 */
     @GetMapping
     public ResponseEntity<?> getCart(HttpServletRequest request) {
-        Member member = getLoginMember(request);
-        return ResponseEntity.ok(cartService.getCart(member.getId()));
+        try {
+            Member member = getLoginMember(request);
+            return ResponseEntity.ok(cartService.getCart(member.getId()));
+        } catch (IllegalStateException e) {
+            return ResponseEntity.status(401).body("NO_SESSION");
+        }
     }
 
     /** 장바구니 추가 */
@@ -45,14 +64,10 @@ public class CartController {
     public ResponseEntity<?> addToCart(HttpServletRequest request,
                                        @RequestBody CartAddRequestDto req) {
 
-        Member member = getLoginMember(request);
-
-        System.out.println("받은 데이터 = productId=" + req.getProductId()
-                + ", optionId=" + req.getOptionId()
-                + ", quantity=" + req.getQuantity());
-
-        cartService.addToCart(member.getId(), req);
-        return ResponseEntity.ok().build();
+        return handleAuth(() -> {
+            Member member = getLoginMember(request);
+            cartService.addToCart(member.getId(), req);
+        });
     }
 
     /** 수량 변경 */
@@ -60,10 +75,10 @@ public class CartController {
     public ResponseEntity<?> updateQuantity(HttpServletRequest request,
                                             @RequestBody CartUpdateQuantityDto req) {
 
-        Member member = getLoginMember(request);
-
-        cartService.updateQuantity(req.getCartId(), req.getQuantity());
-        return ResponseEntity.ok().build();
+        return handleAuth(() -> {
+            Member member = getLoginMember(request);
+            cartService.updateQuantity(member.getId(), req.getCartId(), req.getQuantity());
+        });
     }
 
     /** 옵션 변경 */
@@ -71,10 +86,10 @@ public class CartController {
     public ResponseEntity<?> changeOption(HttpServletRequest request,
                                           @RequestBody CartChangeOptionDto req) {
 
-        Member member = getLoginMember(request);
-
-        cartService.changeOption(member.getId(), req.getCartId(), req.getNewOptionId());
-        return ResponseEntity.ok().build();
+        return handleAuth(() -> {
+            Member member = getLoginMember(request);
+            cartService.changeOption(member.getId(), req.getCartId(), req.getNewOptionId());
+        });
     }
 
     /** 장바구니 삭제 */
@@ -82,9 +97,9 @@ public class CartController {
     public ResponseEntity<?> delete(HttpServletRequest request,
                                     @PathVariable Long cartId) {
 
-        Member member = getLoginMember(request);
-
-        cartService.delete(cartId, member.getId());
-        return ResponseEntity.ok().build();
+        return handleAuth(() -> {
+            Member member = getLoginMember(request);
+            cartService.delete(cartId, member.getId());
+        });
     }
 }
