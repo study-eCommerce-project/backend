@@ -32,130 +32,156 @@ public class OrderService {
     private final MemberRepository memberRepository;
     private final OrderRepository orderRepository;
     private final OrderItemRepository orderItemRepository;
-    private final ProductOptionRepository productOptionRepository;
     private final ProductRepository productRepository;
+    private final ProductOptionRepository productOptionRepository;
 
+    /**
+     * 주문 생성: (1) 일반 방식 or (2) 포인트 차감 방식 중 선택 가능
+     */
+    @Transactional
     public OrderDto checkout(Long memberId) {
 
         Member member = memberRepository.findById(memberId)
                 .orElseThrow(() -> new RuntimeException("회원 없음"));
 
         List<Cart> carts = cartRepository.findByMember_Id(memberId);
-        if (carts.isEmpty()) throw new RuntimeException("장바구니 비었습니다.");
+        if (carts.isEmpty()) throw new RuntimeException("장바구니가 비어 있습니다.");
 
-        // 1) 총 금액 계산
-        int totalPrice = carts.stream()
-                .mapToInt(c -> c.getProduct().getSellPrice().intValue() * c.getQuantity())
-                .sum();
+        BigDecimal totalPrice = BigDecimal.ZERO;
+        List<OrderItemDto> itemDtos = new ArrayList<>();
 
 
-        /* -------------------------------------------
-         * 2) 재고 체크 (추가)
-         * ------------------------------------------- */
+        /* -----------------------------------------
+         * 1) 재고 체크 + 단가 계산
+         * ----------------------------------------- */
         for (Cart c : carts) {
+
             Product p = c.getProduct();
             ProductOption opt = c.getOption();
+            int qty = c.getQuantity();
 
-            if (opt != null) {  // 옵션 상품
-                if (opt.getStock() < c.getQuantity()) {
+            BigDecimal unitPrice;
+
+            // 옵션상품 → option.sell_price
+            if (opt != null) {
+                unitPrice = opt.getSellPrice();
+
+                if (opt.getStock() < qty)
                     throw new RuntimeException("옵션 재고 부족: " + opt.getOptionValue());
-                }
-            } else {            // 단일 상품
-                if (p.getStock() < c.getQuantity()) {
+
+            } else {
+                // 단일상품 → product.sell_price
+                unitPrice = p.getSellPrice();
+
+                if (p.getStock() < qty)
                     throw new RuntimeException("상품 재고 부족: " + p.getProductName());
-                }
             }
+
+            totalPrice = totalPrice.add(unitPrice.multiply(BigDecimal.valueOf(qty)));
         }
 
 
-        /* -------------------------------------------
-         * 3) 주문 생성 (기존 코드 그대로)
-         * ------------------------------------------- */
+        /* -----------------------------------------
+         * 2) 포인트 결제
+         * ----------------------------------------- */
+        BigDecimal memberPoint = BigDecimal.valueOf(member.getPoint());
+
+        if (memberPoint.compareTo(totalPrice) < 0) {
+            throw new RuntimeException("포인트 부족 (필요: " + totalPrice + ")");
+        }
+
+        member.setPoint(memberPoint.subtract(totalPrice).intValue());
+        memberRepository.save(member);
+
+
+        /* -----------------------------------------
+         * 3) 주문 생성
+         * ----------------------------------------- */
         Order order = orderRepository.save(
                 Order.builder()
                         .member(member)
                         .orderNumber("ORD-" + UUID.randomUUID().toString().substring(0, 8))
+                        .totalPrice(totalPrice)
                         .paymentMethod("POINT")
                         .status("PAID")
-                        .totalPrice(BigDecimal.valueOf(totalPrice))
                         .build()
         );
 
-        List<OrderItemDto> items = new ArrayList<>();
 
-
-        /* -------------------------------------------
-         * 4) 주문 상세 생성 + 재고 차감 (추가)
-         * ------------------------------------------- */
+        /* -----------------------------------------
+         * 4) 주문 상세 생성 + 재고차감
+         * ----------------------------------------- */
         for (Cart c : carts) {
 
             Product p = c.getProduct();
             ProductOption opt = c.getOption();
+            int qty = c.getQuantity();
 
-            // 주문 상세 저장 (기존)
-            orderItemRepository.save(
+            BigDecimal unitPrice =
+                    (opt == null) ? p.getSellPrice() : opt.getSellPrice();
+
+            // ORDER ITEM 생성
+            OrderItem orderItem = orderItemRepository.save(
                     OrderItem.builder()
                             .order(order)
                             .product(p)
                             .option(opt)
-                            .quantity(c.getQuantity())
-                            .price(p.getSellPrice())
+                            .quantity(qty)
+                            .price(unitPrice)
                             .build()
             );
 
-            // (추가) 재고 차감
-            if (opt != null) {  // 옵션 상품
-                int newStock = opt.getStock() - c.getQuantity();
-                opt.setStock(newStock);
+            // 재고 차감
+            if (opt != null) {
+                opt.setStock(opt.getStock() - qty);
                 productOptionRepository.save(opt);
-
-                // 옵션 전체 재고 합산 → product.stock 업데이트
-                int mergedStock = p.getOptions().stream()
-                        .mapToInt(ProductOption::getStock)
-                        .sum();
-                p.setStock(mergedStock);
-
-            } else {            // 단일 상품
-                p.setStock(p.getStock() - c.getQuantity());
-            }
-
-            // (추가) 품절 처리
-            if (p.getStock() == 0) {
-                p.setProductStatus(20); // 품절
+            } else {
+                p.setStock(p.getStock() - qty);
             }
 
             productRepository.save(p);
-
-            // OrderItemDto 추가
-            items.add(
-                    OrderItemDto.builder()
-                            .productName(p.getProductName())
-                            .quantity(c.getQuantity())
-                            .price(p.getSellPrice())
-                            .subtotal(p.getSellPrice().multiply(BigDecimal.valueOf(c.getQuantity())))
-                            .build()
-            );
+            itemDtos.add(OrderItemDto.fromEntity(orderItem));
         }
 
 
-        /* -------------------------------------------
-         * 5) 장바구니 삭제 (기존)
-         * ------------------------------------------- */
+        /* -----------------------------------------
+         * 5) 옵션상품이면 product.stock 재계산
+         * ----------------------------------------- */
+        for (Cart c : carts) {
+            Product p = c.getProduct();
+
+            List<ProductOption> options = productOptionRepository.findByProduct_ProductId(p.getProductId());
+            if (!options.isEmpty()) {
+                int newStock = options.stream().mapToInt(ProductOption::getStock).sum();
+                p.setStock(newStock);
+                productRepository.save(p);
+            }
+        }
+
+
+        /* -----------------------------------------
+         * 6) 장바구니 비우기
+         * ----------------------------------------- */
         cartRepository.deleteAll(carts);
 
 
-        /* -------------------------------------------
-         * 6) OrderDto 반환 (기존)
-         * ------------------------------------------- */
+        /* -----------------------------------------
+         * 7) 결과 반환
+         * ----------------------------------------- */
         return OrderDto.builder()
                 .orderNumber(order.getOrderNumber())
                 .totalPrice(order.getTotalPrice())
                 .paymentMethod(order.getPaymentMethod())
                 .status(order.getStatus())
-                .items(items)
+                .items(itemDtos)
                 .build();
     }
+
 }
+
+
+
+
 
 
 

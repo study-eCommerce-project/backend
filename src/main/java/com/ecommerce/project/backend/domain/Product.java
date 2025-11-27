@@ -31,7 +31,7 @@ public class Product {
     private BigDecimal consumerPrice; // 소비자가 (정가)
 
     @Column(name = "sell_price", nullable = false, precision = 10, scale = 2)
-    private BigDecimal sellPrice; // 판매가
+    private BigDecimal sellPrice; // 판매가(할인가)
 
     @Column(nullable = false)
     private Integer stock; // 총 재고

@@ -98,10 +98,10 @@ public class CartService {
     public CartResponseDto getCart(Long memberId) {
 
         List<Cart> carts = cartRepository.findByMember_Id(memberId);
-
         String baseUrl = musinsaConfig.getImageBaseUrl();
 
         List<CartItemDto> items = carts.stream().map(cart -> {
+
             Product p = cart.getProduct();
             ProductOption o = cart.getOption();
 
@@ -114,7 +114,14 @@ public class CartService {
                 }
             }
 
-            boolean soldOut = (o == null) ? p.getStock() <= 0 : o.getStock() <= 0;
+            // ✔ 가격 계산 (핵심)
+            int price = (o == null)
+                    ? p.getSellPrice().intValue()      // 단일상품
+                    : o.getSellPrice().intValue();     // 옵션상품
+
+            boolean soldOut = (o == null)
+                    ? p.getStock() <= 0
+                    : o.getStock() <= 0;
 
             return CartItemDto.builder()
                     .cartId(cart.getCartId())
@@ -122,7 +129,7 @@ public class CartService {
                     .productName(p.getProductName())
                     .thumbnail(fullImg)
                     .quantity(cart.getQuantity())
-                    .price(p.getSellPrice().intValue())
+                    .price(price)                      // ⭐ 수정된 가격
                     .stock(o == null ? p.getStock() : o.getStock())
                     .soldOut(soldOut)
                     .option(o == null ? null :
@@ -134,6 +141,7 @@ public class CartService {
                                     .colorCode(o.getColorCode())
                                     .build())
                     .build();
+
         }).toList();
 
         int totalPrice = items.stream().mapToInt(i -> i.getPrice() * i.getQuantity()).sum();
@@ -145,6 +153,7 @@ public class CartService {
                 .totalQuantity(totalQty)
                 .build();
     }
+
 
 
     /** -------------------------

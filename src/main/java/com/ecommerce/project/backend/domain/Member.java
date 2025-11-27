@@ -24,5 +24,10 @@ public class Member {
 
     @Builder.Default
     private String role = "USER";
+
+    // 포인트 필드
+    @Builder.Default
+    @Column(nullable = false)
+    private Integer point = 0;
 }
 
