@@ -64,6 +64,7 @@ public class ProductService {
     }
 
     /** 상세 정보 (옵션 + 이미지 + 카테고리) */
+    /** 상세 정보 (옵션 + 이미지 + 카테고리) */
     public ProductDetailResponseDto getProductDetail(Long productId, Long memberId) {
 
         String baseUrl = musinsaConfig.getImageBaseUrl();
@@ -72,9 +73,11 @@ public class ProductService {
         Product p = productRepository.findById(productId)
                 .orElseThrow(() -> new IllegalArgumentException("상품 없음: " + productId));
 
-        // 옵션
+        // 옵션 조회
         List<OptionDto> options = optionRepository.findByProduct_ProductId(productId)
                 .stream()
+                // 옵션 타입 N(단일상품 옵션)은 내려줄 필요 없음
+                .filter(opt -> !"N".equals(opt.getOptionType()))
                 .map(OptionDto::fromEntity)
                 .collect(Collectors.toList());
 
@@ -97,7 +100,7 @@ public class ProductService {
             categoryPath = categoryTreeService.getCategoryPath(codes.get(0));
         }
 
-        // ⭐ 추가: 좋아요 정보
+        // 좋아요
         Long likeCount = productLikeRepository.countByProductId(productId);
         boolean userLiked = productLikeRepository.existsByMemberIdAndProductId(memberId, productId);
 
@@ -106,7 +109,7 @@ public class ProductService {
                 .productName(p.getProductName())
                 .description(p.getDescription())
                 .consumerPrice(p.getConsumerPrice())
-                .sellPrice(p.getSellPrice())
+                .sellPrice(p.getSellPrice())   // ⭐ 단일상품 가격
                 .stock(p.getStock())
                 .isOption(p.getIsOption())
                 .mainImg(p.getMainImg())
@@ -115,11 +118,11 @@ public class ProductService {
                 .isShow(p.getIsShow())
                 .categoryPath(categoryPath)
                 .categories(codes)
-                .options(options)
-                // ⭐ 여기 두 개 추가
+                .options(options)               // ⭐ C/S 옵션만 내려감
                 .likeCount(likeCount)
                 .userLiked(userLiked)
                 .build();
     }
+
 
 }

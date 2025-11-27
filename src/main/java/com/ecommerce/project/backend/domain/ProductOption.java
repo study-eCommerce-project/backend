@@ -35,6 +35,10 @@ public class ProductOption {
     @Column(name = "sell_price", precision = 10, scale = 2)
     private BigDecimal sellPrice; // 옵션별 판매가
 
+    @Column(name = "extra_price", precision = 10, scale = 2)
+    private BigDecimal extraPrice;  // 옵션 추가금 (없으면 0)
+
+
     @Column(name = "is_show", columnDefinition = "TINYINT(1) DEFAULT 1")
     private Boolean isShow; // 옵션 노출 여부 (true=보임, false=숨김)
 

@@ -5,6 +5,8 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.Setter;
 
+import java.math.BigDecimal;
+
 @Getter
 @Setter
 @Builder
@@ -15,6 +17,9 @@ public class OptionDto {
     private String optionValue;
     private String colorCode;
 
+    private BigDecimal sellPrice;
+    private Integer stock;
+
     public static OptionDto fromEntity(ProductOption o) {
         return OptionDto.builder()
                 .optionId(o.getOptionId())
@@ -22,6 +27,9 @@ public class OptionDto {
                 .optionTitle(o.getOptionTitle())
                 .optionValue(o.getOptionValue())
                 .colorCode(o.getColorCode())
+                .sellPrice(o.getSellPrice())
+                .stock(o.getStock())
+
                 .build();
     }
 
