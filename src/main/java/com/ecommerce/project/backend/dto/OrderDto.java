@@ -53,6 +53,7 @@ package com.ecommerce.project.backend.dto;
 
 import lombok.*;
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.util.List;
 
 @Getter
@@ -69,4 +70,5 @@ public class OrderDto {
 
     private MemberAddressDto address;        // 프론트에서 바로 사용 가능!
     private List<OrderItemDto> items;
+    private LocalDateTime createdAt;
 }

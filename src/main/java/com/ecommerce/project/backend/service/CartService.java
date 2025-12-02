@@ -28,6 +28,7 @@ public class CartService {
     @Transactional
     public void addToCart(Long memberId, CartAddRequestDto req) {
 
+
         Member member = memberRepository.findById(memberId)
                 .orElseThrow(() -> new RuntimeException("회원 없음"));
 

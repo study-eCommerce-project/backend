@@ -16,6 +16,7 @@ public class MemberAddressDto {
     private String address;
     private String detail;
     private Boolean isDefault;
+    private String zipcode;
 
     public static MemberAddressDto fromEntity(MemberAddress addr) {
         return MemberAddressDto.builder()
@@ -24,6 +25,7 @@ public class MemberAddressDto {
                 .phone(addr.getPhone())
                 .address(addr.getAddress())
                 .detail(addr.getDetail())
+                .zipcode(addr.getZipcode())
                 .isDefault(addr.getIsDefault())
                 .build();
     }

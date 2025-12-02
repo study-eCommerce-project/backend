@@ -34,6 +34,10 @@ public class MemberAddress {
     @Column(name = "detail")
     private String detail;
 
+    @Column(name = "zipcode")
+    private String zipcode;
+
+
     @Column(name = "is_default")
     private Boolean isDefault;
 

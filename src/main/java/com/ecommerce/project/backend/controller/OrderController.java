@@ -36,4 +36,18 @@ public class OrderController {
 
         return ResponseEntity.ok(order);
     }
+
+    @GetMapping("/history")
+    public ResponseEntity<?> getOrderHistory(HttpSession session) {
+
+        Member member = (Member) session.getAttribute("loginMember");
+        if (member == null) {
+            return ResponseEntity.status(401).body("NOT_LOGIN");
+        }
+
+        Long memberId = member.getId(); // Member → memberId 변환
+
+        return ResponseEntity.ok(orderService.getOrderHistory(memberId));
+    }
+
 }

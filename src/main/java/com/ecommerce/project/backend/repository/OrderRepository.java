@@ -6,4 +6,6 @@ import java.util.List;
 
 public interface OrderRepository extends JpaRepository<Order, Long> {
     List<Order> findByMember_Id(Long memberId);
+    List<Order> findByMember_IdOrderByCreatedAtDesc(Long memberId);
+
 }

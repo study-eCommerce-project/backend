@@ -1,5 +1,6 @@
 package com.ecommerce.project.backend.service;
 
+import com.ecommerce.project.backend.config.MusinsaConfig;
 import com.ecommerce.project.backend.domain.*;
 import com.ecommerce.project.backend.dto.MemberAddressDto;
 import com.ecommerce.project.backend.dto.OrderDto;
@@ -24,9 +25,12 @@ public class OrderService {
     private final ProductRepository productRepository;
     private final ProductOptionRepository productOptionRepository;
     private final MemberAddressRepository memberAddressRepository;
+    private final MusinsaConfig musinsaConfig;
 
     @Transactional
     public OrderDto checkout(Long memberId, Long addressId) {
+
+        String baseUrl = musinsaConfig.getImageBaseUrl();
 
         // -------------------------------
         // 1) 회원 & 배송지 조회
@@ -88,7 +92,7 @@ public class OrderService {
                         .receiverPhone(address.getPhone())
                         .address(address.getAddress())
                         .addressDetail(address.getDetail())
-                        .zipcode("00000") // 필요하면 바꿔라
+                        .zipcode(address.getZipcode())
                         .orderNumber("ORD-" + UUID.randomUUID().toString().substring(0, 8))
                         .totalPrice(totalPrice)
                         .paymentMethod("POINT")
@@ -98,8 +102,10 @@ public class OrderService {
 
 
         // -------------------------------
-        // 6) 주문 상세 저장 + 재고 차감 + DTO 변환
+        // 6) 주문 상세 저장 + 재고 차감
         // -------------------------------
+        Set<Long> updatedProductIds = new HashSet<>();
+
         for (Cart c : carts) {
 
             Product p = c.getProduct();
@@ -108,7 +114,7 @@ public class OrderService {
 
             BigDecimal unitPrice = (opt != null) ? opt.getSellPrice() : p.getSellPrice();
 
-            // DB에 실제 저장되는 OrderItem
+            // 주문 아이템 생성
             OrderItem orderItem = orderItemRepository.save(
                     OrderItem.builder()
                             .order(order)
@@ -116,20 +122,20 @@ public class OrderService {
                             .option(opt)
                             .quantity(qty)
                             .price(unitPrice)
-                            .mainImg(p.getMainImg()) // 🔥 DB 저장
-                            .productName(p.getProductName()) // 🔥 DB 저장
-                            .optionValue(opt != null ? opt.getOptionValue() : null) // 🔥 DB 저장
+                            .mainImg(p.getMainImg())
+                            .productName(p.getProductName())
+                            .optionValue(opt != null ? opt.getOptionValue() : null)
                             .build()
             );
 
-            // 프론트로 보낼 DTO
+            // 프론트 반환 DTO
             itemDtos.add(
                     OrderItemDto.builder()
                             .orderItemId(orderItem.getOrderItemId())
                             .orderId(order.getOrderId())
                             .productId(p.getProductId())
                             .productName(orderItem.getProductName())
-                            .mainImg(orderItem.getMainImg())
+                            .mainImg(baseUrl + orderItem.getMainImg())
                             .optionId(opt != null ? opt.getOptionId() : null)
                             .optionValue(orderItem.getOptionValue())
                             .quantity(orderItem.getQuantity())
@@ -142,22 +148,43 @@ public class OrderService {
             if (opt != null) {
                 opt.setStock(opt.getStock() - qty);
                 productOptionRepository.save(opt);
-            } else {
-                p.setStock(p.getStock() - qty);
-            }
 
-            productRepository.save(p);
+                updatedProductIds.add(p.getProductId()); // 옵션 상품만 대상
+            } else {
+                // 단일 상품은 product.stock 직접 감소
+                p.setStock(p.getStock() - qty);
+                productRepository.save(p);
+            }
+        }
+
+        // -------------------------------
+        // 7) 옵션상품 재고 합산 → Product.stock 업데이트
+        // -------------------------------
+        for (Long productId : updatedProductIds) {
+
+            List<ProductOption> optionList =
+                    productOptionRepository.findByProduct_ProductId(productId);
+
+            int totalStock = optionList.stream()
+                    .mapToInt(ProductOption::getStock)
+                    .sum();
+
+            Product product = productRepository.findById(productId)
+                    .orElseThrow(() -> new RuntimeException("상품 없음"));
+
+            product.setStock(totalStock);
+            productRepository.save(product);
         }
 
 
         // -------------------------------
-        // 7) 장바구니 비우기
+        // 8) 장바구니 비우기
         // -------------------------------
         cartRepository.deleteAll(carts);
 
 
         // -------------------------------
-        // 8) 프론트로 반환할 DTO 생성
+        // 9) 최종 DTO 반환
         // -------------------------------
         return OrderDto.builder()
                 .orderNumber(order.getOrderNumber())
@@ -167,5 +194,67 @@ public class OrderService {
                 .address(MemberAddressDto.fromEntity(address))
                 .items(itemDtos)
                 .build();
+    }
+
+
+
+    // ================================
+    // 주문 내역 조회
+    // ================================
+    public List<OrderDto> getOrderHistory(Long memberId) {
+
+        String baseUrl = musinsaConfig.getImageBaseUrl();
+
+        List<Order> orders = orderRepository.findByMember_IdOrderByCreatedAtDesc(memberId);
+
+        List<OrderDto> dtos = new ArrayList<>();
+
+        for (Order order : orders) {
+
+            List<OrderItemDto> itemDtos = new ArrayList<>();
+
+            for (OrderItem item : order.getOrderItems()) {
+
+                String fullImg = (item.getMainImg() != null)
+                        ? baseUrl + item.getMainImg()
+                        : null;
+
+                itemDtos.add(
+                        OrderItemDto.builder()
+                                .orderItemId(item.getOrderItemId())
+                                .orderId(order.getOrderId())
+                                .productId(item.getProduct().getProductId())
+                                .productName(item.getProductName())
+                                .mainImg(fullImg)
+                                .optionValue(item.getOptionValue())
+                                .quantity(item.getQuantity())
+                                .price(item.getPrice())
+                                .subtotal(item.getSubtotal())
+                                .build()
+                );
+            }
+
+            MemberAddressDto addressDto = MemberAddressDto.builder()
+                    .name(order.getReceiverName())
+                    .phone(order.getReceiverPhone())
+                    .address(order.getAddress())
+                    .detail(order.getAddressDetail())
+                    .zipcode(order.getZipcode())
+                    .build();
+
+            dtos.add(
+                    OrderDto.builder()
+                            .orderNumber(order.getOrderNumber())
+                            .totalPrice(order.getTotalPrice())
+                            .paymentMethod(order.getPaymentMethod())
+                            .status(order.getStatus())
+                            .address(addressDto)
+                            .items(itemDtos)
+                            .createdAt(order.getCreatedAt())
+                            .build()
+            );
+        }
+
+        return dtos;
     }
 }
