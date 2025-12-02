@@ -9,6 +9,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.Map;
+
 @RestController
 @RequestMapping("/api/orders")
 @RequiredArgsConstructor
@@ -17,7 +19,10 @@ public class OrderController {
     private final OrderService orderService;
 
     @PostMapping("/create")
-    public ResponseEntity<OrderDto> createOrder(HttpServletRequest request) {
+    public ResponseEntity<OrderDto> createOrder(
+            @RequestBody Map<String, Object> data,
+            HttpServletRequest request
+    ) {
 
         HttpSession session = request.getSession(false);
         if (session == null) return ResponseEntity.status(401).build();
@@ -25,9 +30,10 @@ public class OrderController {
         Member loginMember = (Member) session.getAttribute("loginMember");
         if (loginMember == null) return ResponseEntity.status(401).build();
 
-        OrderDto order = orderService.checkout(loginMember.getId());
+        Long addressId = Long.valueOf(data.get("addressId").toString());
+
+        OrderDto order = orderService.checkout(loginMember.getId(), addressId);
+
         return ResponseEntity.ok(order);
     }
-
 }
-

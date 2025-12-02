@@ -4,6 +4,7 @@ import com.ecommerce.project.backend.domain.Member;
 import com.ecommerce.project.backend.dto.MemberDto;
 import com.ecommerce.project.backend.repository.MemberRepository;
 import com.ecommerce.project.backend.service.MemberService;
+import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -37,6 +38,35 @@ public class MemberController {
         }
     }
 
+    /** 내 정보 수정 */
+    @PutMapping("/update")
+    public ResponseEntity<?> updateMyInfo(
+            @RequestBody MemberDto dto,
+            HttpServletRequest request
+    ) {
+        Member loginMember = (Member) request.getSession().getAttribute("loginMember");
+
+        if (loginMember == null)
+            return ResponseEntity.status(401).body("로그인 필요");
+
+        MemberDto updated = memberService.updateMemberInfo(loginMember.getId(), dto);
+        return ResponseEntity.ok(updated);
+    }
+
+    @GetMapping("/member/me")
+    public ResponseEntity<?> getMyInfo(HttpServletRequest request) {
+
+        Member loginMember = (Member) request.getSession().getAttribute("loginMember");
+
+        if (loginMember == null) {
+            return ResponseEntity.status(401).body("로그인 필요");
+        }
+
+        // DTO로 변환해서 리턴
+        MemberDto dto = MemberDto.fromEntity(loginMember);
+
+        return ResponseEntity.ok(dto);
+    }
 
 }
 

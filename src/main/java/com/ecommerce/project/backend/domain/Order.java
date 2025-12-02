@@ -28,15 +28,16 @@ public class Order {
     private BigDecimal totalPrice;
 
     @Column(name = "status", length = 20)
-    private String status; // ORDERED, PAID, SHIPPED, etc.
+    private String status; // ORDERED, PAID, SHIPPED ...
 
     @Column(name = "payment_method", length = 30)
     private String paymentMethod;
 
-    @Column(name = "receiver_name", length = 50)
+    /** 🔥 배송 정보 스냅샷 저장 — 이 구조가 너희 프로젝트에 맞는 방식임 */
+    @Column(name = "receiver_name")
     private String receiverName;
 
-    @Column(name = "receiver_phone", length = 20)
+    @Column(name = "receiver_phone")
     private String receiverPhone;
 
     @Column(name = "address")
@@ -45,7 +46,7 @@ public class Order {
     @Column(name = "address_detail")
     private String addressDetail;
 
-    @Column(name = "zipcode", length = 10)
+    @Column(name = "zipcode")
     private String zipcode;
 
     @Column(name = "created_at")
@@ -68,4 +69,3 @@ public class Order {
         updatedAt = LocalDateTime.now();
     }
 }
-

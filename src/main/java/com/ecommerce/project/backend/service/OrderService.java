@@ -1,18 +1,7 @@
-//package com.ecommerce.project.backend.service;
-//
-//import com.ecommerce.project.backend.domain.*;
-//
-//import com.ecommerce.project.backend.dto.*;
-//import com.ecommerce.project.backend.repository.*;
-//import lombok.RequiredArgsConstructor;
-//import org.springframework.stereotype.Service;
-//import org.springframework.transaction.annotation.Transactional;
-//import java.math.BigDecimal;
-//import java.util.*;
-//import java.util.stream.Collectors;
 package com.ecommerce.project.backend.service;
 
 import com.ecommerce.project.backend.domain.*;
+import com.ecommerce.project.backend.dto.MemberAddressDto;
 import com.ecommerce.project.backend.dto.OrderDto;
 import com.ecommerce.project.backend.dto.OrderItemDto;
 import com.ecommerce.project.backend.repository.*;
@@ -34,16 +23,24 @@ public class OrderService {
     private final OrderItemRepository orderItemRepository;
     private final ProductRepository productRepository;
     private final ProductOptionRepository productOptionRepository;
+    private final MemberAddressRepository memberAddressRepository;
 
-    /**
-     * 주문 생성: (1) 일반 방식 or (2) 포인트 차감 방식 중 선택 가능
-     */
     @Transactional
-    public OrderDto checkout(Long memberId) {
+    public OrderDto checkout(Long memberId, Long addressId) {
 
+        // -------------------------------
+        // 1) 회원 & 배송지 조회
+        // -------------------------------
         Member member = memberRepository.findById(memberId)
                 .orElseThrow(() -> new RuntimeException("회원 없음"));
 
+        MemberAddress address = memberAddressRepository.findById(addressId)
+                .orElseThrow(() -> new RuntimeException("배송지 없음"));
+
+
+        // -------------------------------
+        // 2) 장바구니 조회
+        // -------------------------------
         List<Cart> carts = cartRepository.findByMember_Id(memberId);
         if (carts.isEmpty()) throw new RuntimeException("장바구니가 비어 있습니다.");
 
@@ -51,55 +48,47 @@ public class OrderService {
         List<OrderItemDto> itemDtos = new ArrayList<>();
 
 
-        /* -----------------------------------------
-         * 1) 재고 체크 + 단가 계산
-         * ----------------------------------------- */
+        // -------------------------------
+        // 3) 총 결제 금액 계산 + 재고 체크
+        // -------------------------------
         for (Cart c : carts) {
-
             Product p = c.getProduct();
             ProductOption opt = c.getOption();
             int qty = c.getQuantity();
 
-            BigDecimal unitPrice;
+            BigDecimal unitPrice = (opt != null) ? opt.getSellPrice() : p.getSellPrice();
 
-            // 옵션상품 → option.sell_price
-            if (opt != null) {
-                unitPrice = opt.getSellPrice();
+            if (opt != null && opt.getStock() < qty)
+                throw new RuntimeException("옵션 재고 부족: " + opt.getOptionValue());
 
-                if (opt.getStock() < qty)
-                    throw new RuntimeException("옵션 재고 부족: " + opt.getOptionValue());
-
-            } else {
-                // 단일상품 → product.sell_price
-                unitPrice = p.getSellPrice();
-
-                if (p.getStock() < qty)
-                    throw new RuntimeException("상품 재고 부족: " + p.getProductName());
-            }
+            if (opt == null && p.getStock() < qty)
+                throw new RuntimeException("상품 재고 부족: " + p.getProductName());
 
             totalPrice = totalPrice.add(unitPrice.multiply(BigDecimal.valueOf(qty)));
         }
 
 
-        /* -----------------------------------------
-         * 2) 포인트 결제
-         * ----------------------------------------- */
-        BigDecimal memberPoint = BigDecimal.valueOf(member.getPoint());
+        // -------------------------------
+        // 4) 회원 포인트 차감
+        // -------------------------------
+        if (member.getPoint() < totalPrice.intValue())
+            throw new RuntimeException("포인트 부족");
 
-        if (memberPoint.compareTo(totalPrice) < 0) {
-            throw new RuntimeException("포인트 부족 (필요: " + totalPrice + ")");
-        }
-
-        member.setPoint(memberPoint.subtract(totalPrice).intValue());
+        member.setPoint(member.getPoint() - totalPrice.intValue());
         memberRepository.save(member);
 
 
-        /* -----------------------------------------
-         * 3) 주문 생성
-         * ----------------------------------------- */
+        // -------------------------------
+        // 5) 주문 생성
+        // -------------------------------
         Order order = orderRepository.save(
                 Order.builder()
                         .member(member)
+                        .receiverName(address.getName())
+                        .receiverPhone(address.getPhone())
+                        .address(address.getAddress())
+                        .addressDetail(address.getDetail())
+                        .zipcode("00000") // 필요하면 바꿔라
                         .orderNumber("ORD-" + UUID.randomUUID().toString().substring(0, 8))
                         .totalPrice(totalPrice)
                         .paymentMethod("POINT")
@@ -108,19 +97,18 @@ public class OrderService {
         );
 
 
-        /* -----------------------------------------
-         * 4) 주문 상세 생성 + 재고차감
-         * ----------------------------------------- */
+        // -------------------------------
+        // 6) 주문 상세 저장 + 재고 차감 + DTO 변환
+        // -------------------------------
         for (Cart c : carts) {
 
             Product p = c.getProduct();
             ProductOption opt = c.getOption();
             int qty = c.getQuantity();
 
-            BigDecimal unitPrice =
-                    (opt == null) ? p.getSellPrice() : opt.getSellPrice();
+            BigDecimal unitPrice = (opt != null) ? opt.getSellPrice() : p.getSellPrice();
 
-            // ORDER ITEM 생성
+            // DB에 실제 저장되는 OrderItem
             OrderItem orderItem = orderItemRepository.save(
                     OrderItem.builder()
                             .order(order)
@@ -128,6 +116,25 @@ public class OrderService {
                             .option(opt)
                             .quantity(qty)
                             .price(unitPrice)
+                            .mainImg(p.getMainImg()) // 🔥 DB 저장
+                            .productName(p.getProductName()) // 🔥 DB 저장
+                            .optionValue(opt != null ? opt.getOptionValue() : null) // 🔥 DB 저장
+                            .build()
+            );
+
+            // 프론트로 보낼 DTO
+            itemDtos.add(
+                    OrderItemDto.builder()
+                            .orderItemId(orderItem.getOrderItemId())
+                            .orderId(order.getOrderId())
+                            .productId(p.getProductId())
+                            .productName(orderItem.getProductName())
+                            .mainImg(orderItem.getMainImg())
+                            .optionId(opt != null ? opt.getOptionId() : null)
+                            .optionValue(orderItem.getOptionValue())
+                            .quantity(orderItem.getQuantity())
+                            .price(orderItem.getPrice())
+                            .subtotal(orderItem.getSubtotal())
                             .build()
             );
 
@@ -140,48 +147,25 @@ public class OrderService {
             }
 
             productRepository.save(p);
-            itemDtos.add(OrderItemDto.fromEntity(orderItem));
         }
 
 
-        /* -----------------------------------------
-         * 5) 옵션상품이면 product.stock 재계산
-         * ----------------------------------------- */
-        for (Cart c : carts) {
-            Product p = c.getProduct();
-
-            List<ProductOption> options = productOptionRepository.findByProduct_ProductId(p.getProductId());
-            if (!options.isEmpty()) {
-                int newStock = options.stream().mapToInt(ProductOption::getStock).sum();
-                p.setStock(newStock);
-                productRepository.save(p);
-            }
-        }
-
-
-        /* -----------------------------------------
-         * 6) 장바구니 비우기
-         * ----------------------------------------- */
+        // -------------------------------
+        // 7) 장바구니 비우기
+        // -------------------------------
         cartRepository.deleteAll(carts);
 
 
-        /* -----------------------------------------
-         * 7) 결과 반환
-         * ----------------------------------------- */
+        // -------------------------------
+        // 8) 프론트로 반환할 DTO 생성
+        // -------------------------------
         return OrderDto.builder()
                 .orderNumber(order.getOrderNumber())
                 .totalPrice(order.getTotalPrice())
                 .paymentMethod(order.getPaymentMethod())
                 .status(order.getStatus())
+                .address(MemberAddressDto.fromEntity(address))
                 .items(itemDtos)
                 .build();
     }
-
 }
-
-
-
-
-
-
-

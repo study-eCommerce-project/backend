@@ -10,6 +10,8 @@ import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
+import org.springframework.http.HttpMethod;
+
 
 import java.util.List;
 
@@ -28,6 +30,9 @@ public class SecurityConfig {
                         .sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED)
                 )
                 .authorizeHttpRequests(auth -> auth
+                        .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll() // ★ OPTIONS 허용
+                        .requestMatchers(HttpMethod.PATCH, "/api/address/**").permitAll() // ★ PATCH 허용
+
                         .requestMatchers("/api/auth/login", "/api/auth/logout").permitAll()
                         .requestMatchers("/api/auth/me").permitAll()
 
@@ -54,7 +59,7 @@ public class SecurityConfig {
         config.addAllowedOriginPattern("https://frontend-green-one-32.vercel.app");  // 커스텀 도메인 연결용
         config.addAllowedOriginPattern("https://frontend-bes01bkz1-limyuhaas-projects.vercel.app");  // Vercel 배포 프론트 허용
 
-        config.setAllowedMethods(List.of("GET","POST","PUT","DELETE","OPTIONS"));
+        config.setAllowedMethods(List.of("GET","POST","PUT","DELETE","OPTIONS","PATCH"));
 
         config.addAllowedHeader("*");
         config.setAllowCredentials(true);
