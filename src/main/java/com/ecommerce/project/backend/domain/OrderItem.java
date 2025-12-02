@@ -80,24 +80,38 @@ public class OrderItem {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "order_id", nullable = false)
-    private Order order; // 어떤 주문에 속하는지
+    private Order order;
+
+
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "product_id", nullable = false)
-    private Product product; // 어떤 상품인지
+    private Product product;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "option_id", nullable = true)
-    private ProductOption option; // 선택된 옵션 (없을 수도 있음)
+    @JoinColumn(name = "option_id")
+    private ProductOption option;
 
     @Column(nullable = false)
-    private Integer quantity; // 수량
+    private Integer quantity;
 
     @Column(precision = 10, scale = 2)
-    private BigDecimal price; // 단가
+    private BigDecimal price;
 
-    @Column(precision = 10, scale = 2)
-    private BigDecimal subtotal; // 상품 합계 (quantity × price)
+    @Column(name = "subtotal", insertable = false, updatable = false)
+    private BigDecimal subtotal;
+
+    // ---------------------------
+    // ✅ 주문 시 저장되는 스냅샷 정보
+    // ---------------------------
+    @Column(name = "product_name")
+    private String productName;
+
+    @Column(name = "main_img")
+    private String mainImg;
+
+    @Column(name = "option_value")
+    private String optionValue;
 
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
@@ -106,7 +120,7 @@ public class OrderItem {
     public void prePersist() {
         this.createdAt = LocalDateTime.now();
         this.updatedAt = LocalDateTime.now();
-        this.subtotal = this.price.multiply(BigDecimal.valueOf(this.quantity)); // 자동 계산
+        this.subtotal = this.price.multiply(BigDecimal.valueOf(this.quantity));
     }
 
     @PreUpdate
@@ -114,5 +128,6 @@ public class OrderItem {
         this.updatedAt = LocalDateTime.now();
     }
 }
+
 
 

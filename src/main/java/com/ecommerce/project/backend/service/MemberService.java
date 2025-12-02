@@ -1,13 +1,17 @@
 package com.ecommerce.project.backend.service;
 
 import com.ecommerce.project.backend.domain.Member;
+import com.ecommerce.project.backend.domain.MemberAddress;
+import com.ecommerce.project.backend.dto.MemberAddressDto;
 import com.ecommerce.project.backend.dto.MemberDto;
+import com.ecommerce.project.backend.repository.MemberAddressRepository;
 import com.ecommerce.project.backend.repository.MemberRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.List;
 import java.util.UUID;
 
 @Service
@@ -15,6 +19,7 @@ import java.util.UUID;
 public class  MemberService {
 
     private final MemberRepository memberRepository;
+    private final MemberAddressRepository memberAddressRepository;
     private final BCryptPasswordEncoder passwordEncoder;
 
     // 회원가입
@@ -34,12 +39,12 @@ public class  MemberService {
         if (member.getPhone() == null) member.setPhone("미기입");
         if (member.getAddress() == null) member.setAddress("미기입");
 
-        // 저장
+        // 회원 저장
         Member saved = memberRepository.save(member);
 
-        // Entity → DTO 변환
         return MemberDto.fromEntity(saved);
     }
+
 
 
 
@@ -80,6 +85,18 @@ public class  MemberService {
         return tempPassword; // Postman 응답 테스트용 (실서비스에서는 이메일로 발송)
     }
 
+    @Transactional
+    public MemberDto updateMemberInfo(Long memberId, MemberDto dto) {
+        Member member = memberRepository.findById(memberId)
+                .orElseThrow(() -> new RuntimeException("회원 없음"));
+
+        if (dto.getName() != null) member.setName(dto.getName());
+        if (dto.getPhone() != null) member.setPhone(dto.getPhone());
+        if (dto.getAddress() != null) member.setAddress(dto.getAddress());
+        if (dto.getAddressDetail() != null) member.setAddressDetail(dto.getAddressDetail());
+
+        return MemberDto.fromEntity(member);
+    }
 
 
 }
