@@ -1,4 +1,4 @@
 package com.ecommerce.project.backend.controller;
 
-public class PaymentController {
+public class PaymentController  {
 }
