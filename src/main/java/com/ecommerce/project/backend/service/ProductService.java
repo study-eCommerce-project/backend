@@ -2,6 +2,7 @@ package com.ecommerce.project.backend.service;
 
 import com.ecommerce.project.backend.config.MusinsaConfig;
 import com.ecommerce.project.backend.domain.Product;
+import com.ecommerce.project.backend.domain.ProductOption;
 import com.ecommerce.project.backend.dto.OptionDto;
 import com.ecommerce.project.backend.dto.ProductDetailResponseDto;
 import com.ecommerce.project.backend.dto.ProductDto;
@@ -74,8 +75,7 @@ public class ProductService {
         // 옵션 조회
         List<OptionDto> options = optionRepository.findByProduct_ProductId(productId)
                 .stream()
-                // 옵션 타입 N(단일상품 옵션)은 내려줄 필요 없음
-                .filter(opt -> !"N".equals(opt.getOptionType()))
+                .filter(ProductOption::getIsShow)
                 .map(OptionDto::fromEntity)
                 .collect(Collectors.toList());
 
