@@ -1,6 +1,5 @@
 package com.ecommerce.project.backend.domain;
 
-import com.fasterxml.jackson.annotation.JsonManagedReference;
 import jakarta.persistence.*;
 import lombok.*;
 import java.math.BigDecimal;
@@ -64,8 +63,7 @@ public class Product {
 
     // 옵션 상품 (1:N 매핑)
     @OneToMany(mappedBy = "product", cascade = CascadeType.ALL, orphanRemoval = true)
-    @JsonManagedReference
-    private List<ProductOption> options = new ArrayList<>();
+    private List<ProductOption> productOptions = new ArrayList<>(); // 상품 옵션
 
     //CategoryLink
     @OneToMany(mappedBy = "product", cascade = CascadeType.ALL)
@@ -98,11 +96,11 @@ public class Product {
         this.stock = newStock;
     }
 
-//    /** 옵션 상품 재고 합산 (옵션 상품일 경우 호출) */
+    /** 옵션 상품 재고 합산 (옵션 상품일 경우 호출) */
     public void updateTotalStockFromOptions() {
         if (!isOption) return; // 단일상품이면 패스
 
-        int totalStock = options.stream()
+        int totalStock = productOptions.stream() // `options`를 `productOptions`로 수정
                 .mapToInt(ProductOption::getStock)
                 .sum();
 
@@ -117,7 +115,7 @@ public class Product {
         this.sellPrice = newSellPrice;
     }
 
-    //    상품 상세 설명
+    // 상품 상세 설명
     public void updateDescription(String description) {
 
         this.description = description;
@@ -132,5 +130,16 @@ public class Product {
         this.productStatus = status;
     }
 
-}
 
+    // 옵션값을 기준으로 ProductOption을 찾는 메서드
+    public ProductOption getOptionByValue(String optionValue) {
+        return productOptions.stream()
+                .filter(option -> option.getOptionValue().equals(optionValue))
+                .findFirst()
+                .orElse(null);  // 없으면 null 반환
+    }
+
+    public List<ProductOption> getOptions() {
+        return productOptions;
+    }
+}

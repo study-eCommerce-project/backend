@@ -7,5 +7,5 @@ import lombok.Setter;
 @Setter
 public class CartChangeOptionDto {
     private Long cartId;
-    private Long newOptionId;
+    private String newOptionValue;
 }

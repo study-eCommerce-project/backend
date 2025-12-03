@@ -38,12 +38,11 @@ public class ProductOption {
     @Column(name = "extra_price", precision = 10, scale = 2)
     private BigDecimal extraPrice;  // 옵션 추가금 (없으면 0)
 
-
     @Column(name = "is_show", columnDefinition = "TINYINT(1) DEFAULT 1")
     private Boolean isShow; // 옵션 노출 여부 (true=보임, false=숨김)
 
     @Column(name = "option_type", length = 1, nullable = false)
-    private String optionType; // 옵션 타입 (C=색상, N=일반)
+    private String optionType; // 옵션 타입 (C=색상, N=기본)
 
     @Column(name = "option_title", length = 30)
     private String optionTitle; // 옵션명 (예: 색상, 사이즈)

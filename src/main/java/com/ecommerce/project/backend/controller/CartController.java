@@ -66,7 +66,7 @@ public class CartController {
 
         return handleAuth(() -> {
             Member member = getLoginMember(request);
-            cartService.addToCart(member.getId(), req);
+            cartService.addToCart(member.getId(), req); // addToCart 호출
         });
     }
 
@@ -77,7 +77,7 @@ public class CartController {
 
         return handleAuth(() -> {
             Member member = getLoginMember(request);
-            cartService.updateQuantity(member.getId(), req.getCartId(), req.getQuantity());
+            cartService.updateQuantity(member.getId(), req.getCartId(), req.getQuantity()); // updateQuantity 호출
         });
     }
 
@@ -88,7 +88,7 @@ public class CartController {
 
         return handleAuth(() -> {
             Member member = getLoginMember(request);
-            cartService.changeOption(member.getId(), req.getCartId(), req.getNewOptionId());
+            cartService.changeOption(member.getId(), req.getCartId(), req.getNewOptionValue()); // changeOption 호출
         });
     }
 
@@ -99,8 +99,7 @@ public class CartController {
 
         return handleAuth(() -> {
             Member member = getLoginMember(request);
-            cartService.delete(cartId, member.getId());
+            cartService.delete(cartId, member.getId()); // delete 호출
         });
     }
 }
-

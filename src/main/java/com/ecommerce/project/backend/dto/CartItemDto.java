@@ -16,7 +16,8 @@ public class CartItemDto {
     private Integer stock;     // 남은 재고
     private Boolean soldOut;
 
-    private OptionDto option;  // 옵션 정보 (없으면 null)
+    private String optionValue;  // 옵션 정보 (없으면 null)
+    private String optionTitle;
 }
 
 

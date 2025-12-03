@@ -14,10 +14,12 @@ public interface CartRepository extends JpaRepository<Cart, Long> {
 
     List<Cart> findByMember_Id(Long memberId);
 
-    Optional<Cart> findByMember_IdAndProduct_ProductIdAndOption_OptionId(
-            Long memberId, Long productId, Long optionId);
+    /** 수정된 메서드: 옵션 값으로 검색 */
+    Optional<Cart> findByMember_IdAndProduct_ProductIdAndOptionValue(
+            Long memberId, Long productId, String optionValue);
 
-    Optional<Cart> findByMember_IdAndProduct_ProductIdAndOptionIsNull(
+    /** 수정된 메서드: 옵션 값이 null인 경우 */
+    Optional<Cart> findByMember_IdAndProduct_ProductIdAndOptionValueIsNull(
             Long memberId, Long productId);
 
     /** cartId + memberId 동시 확인 -> 보안 OK */

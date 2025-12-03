@@ -8,7 +8,8 @@ import lombok.Setter;
 @Setter
 public class CartAddRequestDto {
     private Long productId;   // 상품 ID (필수)
-    private Long optionId;    // 옵션상품이면 옵션ID, 단일상품이면 null
+    private String optionValue;
     private Integer quantity; // 수량
+    private String optionTitle;
 
 }

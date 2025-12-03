@@ -43,6 +43,7 @@ public class ProductDto {
     private Long likeCount;    // 좋아요 개수
     private Boolean userLiked; // 로그인 사용자가 좋아요 눌렀는지 여부
 
+    // ProductDto 클래스에서 options 필드를 처리하는 코드
     public static ProductDto fromEntity(Product p, String baseUrl) {
 
         String catCode = null;
@@ -62,7 +63,7 @@ public class ProductDto {
 
         // 옵션 리스트
         List<ProductOptionDto> optionList = new ArrayList<>();
-        if (p.getOptions() != null) {
+        if (p.getOptions() != null) {  // getOptions() 메서드 호출
             optionList = p.getOptions().stream()
                     .map(ProductOptionDto::fromEntity)
                     .collect(Collectors.toList());
@@ -100,5 +101,6 @@ public class ProductDto {
         // ⭐ 좋아요 정보는 서비스에서 set 해줌
         return dto;
     }
+
 }
 
