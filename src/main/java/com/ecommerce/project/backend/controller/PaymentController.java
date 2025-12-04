@@ -18,6 +18,7 @@ public class PaymentController {
     private final OrderService orderService;
     private final OrderRepository orderRepository;
 
+    /** 결제 검증(verify), 결제창 띄우기 전에 Order 생성 (status=READY)*/
     @PostMapping("/verify")
     public ResponseEntity<?> verify(@RequestBody VerifyRequest req) {
 
