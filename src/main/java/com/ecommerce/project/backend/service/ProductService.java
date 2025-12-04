@@ -20,6 +20,7 @@ import java.util.stream.Collectors;
 public class ProductService {
 
     private final ProductRepository productRepository;
+    private final ProductOptionRepository productOptionRepository;
     private final MusinsaConfig musinsaConfig;
     private final ProductOptionRepository optionRepository;
     private final CategoryLinkRepository categoryLinkRepository;
@@ -27,10 +28,11 @@ public class ProductService {
     private final CategoryTreeService categoryTreeService;
 
     private final ProductLikeRepository productLikeRepository;
-    private final ProductOptionRepository productOptionRepository;
 
 
-    /** 전체 상품 조회 */
+    /**
+     * 전체 상품 조회
+     */
     public List<ProductDto> getAllVisibleProducts() {
         String baseUrl = musinsaConfig.getImageBaseUrl();
         return productRepository.findAllVisibleProducts()
@@ -39,7 +41,9 @@ public class ProductService {
                 .collect(Collectors.toList());
     }
 
-    /** 단일 상품 (기본 정보) */
+    /**
+     * 단일 상품 (기본 정보)
+     */
     public ProductDto getProductById(Long id) {
         String baseUrl = musinsaConfig.getImageBaseUrl();
         Product p = productRepository.findById(id)
@@ -47,7 +51,9 @@ public class ProductService {
         return ProductDto.fromEntity(p, baseUrl);
     }
 
-    /** 검색 */
+    /**
+     * 검색
+     */
     public List<ProductDto> searchProductsByName(String keyword) {
         String baseUrl = musinsaConfig.getImageBaseUrl();
         return productRepository.findByProductNameContaining(keyword)
@@ -56,7 +62,9 @@ public class ProductService {
                 .collect(Collectors.toList());
     }
 
-    /** 카테고리 조회 */
+    /**
+     * 카테고리 조회
+     */
     public List<ProductDto> getProductsByCategoryCode(String code) {
         String baseUrl = musinsaConfig.getImageBaseUrl();
         return productRepository.findByCategoryCode(code)
@@ -65,7 +73,9 @@ public class ProductService {
                 .collect(Collectors.toList());
     }
 
-    /** 상세 정보 (옵션 + 이미지 + 카테고리) */
+    /**
+     * 상세 정보 (옵션 + 이미지 + 카테고리)
+     */
     public ProductDetailResponseDto getProductDetail(Long productId, Long memberId) {
         String baseUrl = musinsaConfig.getImageBaseUrl();
 
@@ -159,6 +169,28 @@ public class ProductService {
     }
 
 
+    /**
+     * 상품 수정
+     */
+    public Product updateProduct(Long productId, Product product) {
+        Product existingProduct = productRepository.findById(productId)
+                .orElseThrow(() -> new IllegalArgumentException("상품을 찾을 수 없습니다. ID: " + productId));
 
+        // 상품 정보 수정
+        existingProduct.updateProductInfo(product);
 
+        // 기존 옵션 삭제 후 새 옵션 추가
+        if (product.getIsOption() != null && product.getIsOption()) {
+            List<ProductOption> options = product.getOptions();
+            productOptionRepository.deleteAllByProduct_ProductId(productId); // 기존 옵션 삭제
+            options.forEach(option -> {
+                option.setProduct(existingProduct); // 상품에 연결된 옵션 설정
+                productOptionRepository.save(option); // 새 옵션 저장
+            });
+        }
+
+        return productRepository.save(existingProduct);
+
+    }
 }
+
