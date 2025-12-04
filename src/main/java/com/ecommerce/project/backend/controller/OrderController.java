@@ -48,4 +48,18 @@ public class OrderController {
         return ResponseEntity.ok(orderService.getOrderHistory(memberId));
     }
 
+    /** 카드 결제 주문 생성, 결제창 띄우기 전에 Order 생성 (status=READY) */
+    @PostMapping("/checkout/card")
+    public ResponseEntity<?> checkoutForCard(
+            @RequestParam Long addressId,
+            HttpSession session
+    ) {
+        Long memberId = (Long) session.getAttribute("loginMemberId");
+        if (memberId == null) {
+            return ResponseEntity.status(401).body("NOT_LOGIN");
+        }
+
+        return ResponseEntity.ok(orderService.checkoutForCard(memberId, addressId));
+    }
+
 }
