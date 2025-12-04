@@ -50,6 +50,10 @@ public class ProductOptionService {
         }
 
         ProductOption saved = productOptionRepository.save(entity);
+
+        // ⭐ 상품 재고 자동 업데이트
+        updateProductTotalStock(dto.getProductId());
+
         return ProductOptionMapper.toDto(saved);
     }
 
@@ -84,13 +88,39 @@ public class ProductOptionService {
         existing.setConsumerPrice(newData.getConsumerPrice());
         existing.setSellPrice(newData.getSellPrice());
 
-        return productOptionRepository.save(existing);
+        ProductOption updated = productOptionRepository.save(existing);
+
+        // 이 옵션이 속한 상품의 재고 자동 업데이트
+        updateProductTotalStock(existing.getProduct().getProductId());
+
+        return updated;
+
+
     }
 
     /**
      * 옵션 삭제
      */
     public void deleteOption(Long optionId) {
+        ProductOption opt = getOption(optionId);
+        Long productId = opt.getProduct().getProductId();
+
         productOptionRepository.deleteById(optionId);
+
+        // 옵션 삭제 후 합산 재계산
+        updateProductTotalStock(productId);
     }
+
+    private void updateProductTotalStock(Long productId) {
+        int totalStock = productOptionRepository.sumStockByProductId(productId);
+
+        Product product = productRepository.findById(productId)
+                .orElseThrow(() -> new RuntimeException("상품 없음"));
+
+        product.setStock(totalStock);
+    }
+
+
+
+
 }

@@ -27,6 +27,7 @@ public class ProductService {
     private final CategoryTreeService categoryTreeService;
 
     private final ProductLikeRepository productLikeRepository;
+    private final ProductOptionRepository productOptionRepository;
 
 
     /** 전체 상품 조회 */
@@ -125,6 +126,39 @@ public class ProductService {
                 .userLiked(userLiked)
                 .build();
     }
+
+    public void updateProductStockAndStatus(Long productId) {
+
+        Product product = productRepository.findById(productId)
+                .orElseThrow(() -> new IllegalArgumentException("상품 없음"));
+
+        // 옵션 상품
+        if (Boolean.TRUE.equals(product.getIsOption())) {
+
+            Integer totalStock = productOptionRepository.sumStockByProductId(productId);
+            if (totalStock == null) totalStock = 0;
+
+            product.setStock(totalStock);
+
+            if (totalStock == 0) {
+                product.setProductStatus(20); // 품절
+            } else {
+                product.setProductStatus(10); // 판매중
+            }
+        }
+        // 단일 상품
+        else {
+            if (product.getStock() == 0) {
+                product.setProductStatus(20); // 품절
+            } else {
+                product.setProductStatus(10); // 판매중
+            }
+        }
+
+        productRepository.save(product);
+    }
+
+
 
 
 }

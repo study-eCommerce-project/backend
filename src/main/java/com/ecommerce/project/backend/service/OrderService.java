@@ -9,6 +9,7 @@ import com.ecommerce.project.backend.repository.*;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import com.ecommerce.project.backend.dto.PaymentOrderDto;
 
 import java.math.BigDecimal;
 import java.util.*;
@@ -176,7 +177,6 @@ public class OrderService {
             productRepository.save(product);
         }
 
-
         // -------------------------------
         // 8) 장바구니 비우기
         // -------------------------------
@@ -195,8 +195,6 @@ public class OrderService {
                 .items(itemDtos)
                 .build();
     }
-
-
 
     // ================================
     // 주문 내역 조회
@@ -258,7 +256,6 @@ public class OrderService {
         return dtos;
     }
 
-
     /** Cart에 담긴 optionValue로 실제 ProductOption 찾기 */
     private ProductOption resolveCartOption(Cart cart) {
 
@@ -285,4 +282,137 @@ public class OrderService {
     }
 
 
+    /** 카드/카카오페이 결제 */
+    @Transactional
+    public PaymentOrderDto checkoutForCard(Long memberId, Long addressId) {
+
+        String baseUrl = musinsaConfig.getImageBaseUrl();
+
+        Member member = memberRepository.findById(memberId)
+                .orElseThrow(() -> new RuntimeException("회원 없음"));
+
+        MemberAddress address = memberAddressRepository.findById(addressId)
+                .orElseThrow(() -> new RuntimeException("배송지 없음"));
+
+        List<Cart> carts = cartRepository.findByMember_Id(memberId);
+        if (carts.isEmpty()) throw new RuntimeException("장바구니가 비어 있습니다.");
+
+        BigDecimal totalPrice = BigDecimal.ZERO;
+
+        // 재고 체크만 수행 (차감 X)
+        for (Cart c : carts) {
+            Product p = c.getProduct();
+            ProductOption opt = resolveCartOption(c);
+            int qty = c.getQuantity();
+
+            BigDecimal unitPrice = (opt != null) ? opt.getSellPrice() : p.getSellPrice();
+
+            if (opt != null && opt.getStock() < qty)
+                throw new RuntimeException("옵션 재고 부족: " + opt.getOptionValue());
+
+            if (opt == null && p.getStock() < qty)
+                throw new RuntimeException("상품 재고 부족: " + p.getProductName());
+
+            totalPrice = totalPrice.add(unitPrice.multiply(BigDecimal.valueOf(qty)));
+        }
+
+        // READY 상태의 주문 생성 (결제 전)
+        Order order = orderRepository.save(
+                Order.builder()
+                        .member(member)
+                        .receiverName(address.getName())
+                        .receiverPhone(address.getPhone())
+                        .address(address.getAddress())
+                        .addressDetail(address.getDetail())
+                        .zipcode(address.getZipcode())
+                        .orderNumber("ORD-" + UUID.randomUUID().toString().substring(0, 8))
+                        .totalPrice(totalPrice)
+                        .paymentMethod("CARD")
+                        .status("READY")
+                        .build()
+        );
+
+        return PaymentOrderDto.builder()
+                .orderId(order.getOrderId())
+                .orderNumber(order.getOrderNumber())
+                .totalPrice(order.getTotalPrice())
+                .paymentMethod(order.getPaymentMethod())
+                .build();
+    }
+
+
+    /** 결제 성공 후 최종 확정 처리 */
+    @Transactional
+    public void completeCardPayment(Long orderId) {
+
+        String baseUrl = musinsaConfig.getImageBaseUrl();
+
+        Order order = orderRepository.findById(orderId)
+                .orElseThrow(() -> new RuntimeException("주문 없음"));
+
+        if (!order.getStatus().equals("READY"))
+            throw new RuntimeException("이미 결제 처리된 주문입니다.");
+
+        List<Cart> carts = cartRepository.findByMember_Id(order.getMember().getId());
+        if (carts.isEmpty()) throw new RuntimeException("장바구니 없음");
+
+        Set<Long> updatedProductIds = new HashSet<>();
+
+        // OrderItem 생성 + 재고 차감
+        for (Cart c : carts) {
+
+            Product p = c.getProduct();
+            ProductOption opt = resolveCartOption(c);
+            int qty = c.getQuantity();
+
+            BigDecimal unitPrice = (opt != null) ? opt.getSellPrice() : p.getSellPrice();
+
+            orderItemRepository.save(
+                    OrderItem.builder()
+                            .order(order)
+                            .product(p)
+                            .option(opt)
+                            .quantity(qty)
+                            .price(unitPrice)
+                            .productName(p.getProductName())
+                            .mainImg(p.getMainImg())
+                            .optionValue(opt != null ? opt.getOptionValue() : null)
+                            .build()
+            );
+
+            // 재고 차감
+            if (opt != null) {
+                opt.setStock(opt.getStock() - qty);
+                productOptionRepository.save(opt);
+                updatedProductIds.add(p.getProductId());
+            } else {
+                p.setStock(p.getStock() - qty);
+                productRepository.save(p);
+            }
+        }
+
+        // 옵션상품 → Product.stock 재계산
+        for (Long productId : updatedProductIds) {
+
+            List<ProductOption> optionList =
+                    productOptionRepository.findByProduct_ProductId(productId);
+
+            int totalStock = optionList.stream()
+                    .mapToInt(ProductOption::getStock)
+                    .sum();
+
+            Product product = productRepository.findById(productId)
+                    .orElseThrow(() -> new RuntimeException("상품 없음"));
+
+            product.setStock(totalStock);
+            productRepository.save(product);
+        }
+
+        // 장바구니 비우기
+        cartRepository.deleteAll(carts);
+
+        // 주문 상태 변경 → 결제 완료
+        order.setStatus("PAID");
+        orderRepository.save(order);
+    }
 }
