@@ -2,6 +2,8 @@ package com.ecommerce.project.backend.repository;
 
 import com.ecommerce.project.backend.domain.ProductOption;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 import java.util.List;
 
@@ -15,4 +17,8 @@ public interface ProductOptionRepository extends JpaRepository<ProductOption, Lo
 
     // Product와 연결된 옵션을 삭제하는 메서드
     void deleteAllByProduct_ProductId(Long productId);
+
+    @Query("SELECT COALESCE(SUM(o.stock), 0) FROM ProductOption o WHERE o.product.productId = :productId")
+    int sumStockByProductId(@Param("productId") Long productId);
+
 }
