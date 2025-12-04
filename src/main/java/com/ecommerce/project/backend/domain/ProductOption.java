@@ -84,4 +84,20 @@ public class ProductOption {
                 ? consumerPrice
                 : product != null ? product.getConsumerPrice() : BigDecimal.ZERO;
     }
+
+    // 상품의 옵션 ID를 반환하는 메서드
+    public Long getProductOptionId() {
+        return this.optionId;
+    }
+
+    // 옵션의 재고 수정
+    public void updateStock(int newStock) {
+        if (newStock < 0) {
+            throw new IllegalArgumentException("재고는 음수가 될 수 없습니다.");
+        }
+        this.stock = newStock;
+    }
+
+
+
 }

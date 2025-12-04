@@ -1,12 +1,15 @@
 package com.ecommerce.project.backend.service;
 
 import com.ecommerce.project.backend.domain.Product;
+import com.ecommerce.project.backend.domain.ProductOption;
+import com.ecommerce.project.backend.repository.ProductOptionRepository;
 import com.ecommerce.project.backend.repository.ProductRepository;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
+import java.util.List;
 
 @Service
 @RequiredArgsConstructor
@@ -14,6 +17,7 @@ import java.math.BigDecimal;
 public class AdminProductService {
 
     private final ProductRepository productRepository;
+    private final ProductOptionRepository productOptionRepository;
 
     /** 상품 등록 */
     public Product createProduct(Product product) {
@@ -24,7 +28,40 @@ public class AdminProductService {
             throw new IllegalArgumentException("판매가는 소비자가보다 높을 수 없습니다.");
         }
 
-        return productRepository.save(product);
+        // 상품을 먼저 저장
+        Product savedProduct = productRepository.save(product);
+
+        // 상품이 옵션이 있을 경우 옵션 처리
+        if (product.getIsOption() != null && product.getIsOption()) {
+            List<ProductOption> options = product.getOptions();
+            options.forEach(option -> {
+                option.setProduct(savedProduct); // 옵션에 해당 상품을 연결
+                productOptionRepository.save(option); // 옵션 저장
+            });
+        }
+
+        return savedProduct;
+    }
+
+    /** 상품 수정 */
+    public Product updateProduct(Long productId, Product product) {
+        Product existingProduct = productRepository.findById(productId)
+                .orElseThrow(() -> new IllegalArgumentException("상품을 찾을 수 없습니다. ID: " + productId));
+
+        // 상품 정보 수정
+        existingProduct.updateProductInfo(product);
+
+        // 기존 옵션 삭제 후 새 옵션 추가
+        if (product.getIsOption() != null && product.getIsOption()) {
+            List<ProductOption> options = product.getOptions();
+            productOptionRepository.deleteAllByProduct_ProductId(productId); // 기존 옵션 삭제
+            options.forEach(option -> {
+                option.setProduct(existingProduct); // 상품에 연결된 옵션 설정
+                productOptionRepository.save(option); // 새 옵션 저장
+            });
+        }
+
+        return productRepository.save(existingProduct);
     }
 
     /** 할인가(판매가) 수정 */
@@ -51,33 +88,5 @@ public class AdminProductService {
             throw new IllegalArgumentException("삭제할 상품이 존재하지 않습니다. ID: " + productId);
         }
         productRepository.deleteById(productId);
-    }
-
-    // ---------------------------------------------------------------------
-    // AI 상세페이지 기능
-    // ---------------------------------------------------------------------
-
-    /** AI 상세페이지 생성 (test용) */
-    public String generateAiDetailPreview(Long productId) {
-
-        Product product = productRepository.findById(productId)
-                .orElseThrow(() -> new IllegalArgumentException("상품을 찾을 수 없습니다. ID: " + productId));
-
-        // 지금은 더미 HTML → 나중에 OpenAI HTML로 변경될 부분
-        return """
-                <h2>AI 자동 생성 상세페이지</h2>
-                <p>상품명: %s</p>
-                <p>여기는 나중에 OpenAI가 생성한 HTML로 대체됩니다.</p>
-                """.formatted(product.getProductName());
-    }
-
-    /** AI가 생성한 상세 HTML 저장 */
-    public void updateDescription(Long productId, String description) {
-
-        Product product = productRepository.findById(productId)
-                .orElseThrow(() -> new IllegalArgumentException("상품을 찾을 수 없습니다. ID: " + productId));
-
-        product.updateDescription(description);
-        productRepository.save(product);
     }
 }
