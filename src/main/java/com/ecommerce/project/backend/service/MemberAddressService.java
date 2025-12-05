@@ -68,6 +68,24 @@ public class MemberAddressService {
     }
 
     @Transactional
+    public void updateAddress(Long addressId, Long memberId, MemberAddressDto dto) {
+
+        MemberAddress addr = addressRepository.findById(addressId)
+                .orElseThrow(() -> new RuntimeException("주소 없음"));
+
+        if (!addr.getMember().getId().equals(memberId)) {
+            throw new RuntimeException("수정 권한 없음");
+        }
+
+        addr.setName(dto.getName());
+        addr.setPhone(dto.getPhone());
+        addr.setAddress(dto.getAddress());
+        addr.setDetail(dto.getDetail());
+        addr.setZipcode(dto.getZipcode());
+    }
+
+
+    @Transactional
     public void setDefaultAddress(Long memberId, Long addressId) {
 
         // 모든 배송지 기본값 해제

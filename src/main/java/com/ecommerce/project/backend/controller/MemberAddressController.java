@@ -50,6 +50,19 @@ public class MemberAddressController {
         return ResponseEntity.ok("삭제 완료");
     }
 
+    @PutMapping("/{id}")
+    public ResponseEntity<?> updateAddress(
+            @PathVariable Long id,
+            @RequestBody MemberAddressDto dto,
+            @SessionAttribute("loginMemberId") Long memberId
+    ) {
+
+        addressService.updateAddress(id, memberId, dto);
+        return ResponseEntity.ok().build();
+    }
+
+
+
     /** 기본 배송지 설정 */
     @PatchMapping("/{id}/default")
     public ResponseEntity<?> setDefaultAddress(
