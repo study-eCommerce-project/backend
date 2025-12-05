@@ -40,6 +40,8 @@ public class ProductDto {
 
     private String categoryCode;
 
+    private List<Long> subImagesToDelete;
+
     // ⭐ 추가 (이 두 줄만 넣으면 끝)
     private Long likeCount;    // 좋아요 개수
     private Boolean userLiked; // 로그인 사용자가 좋아요 눌렀는지 여부
@@ -104,6 +106,8 @@ public class ProductDto {
         // ⭐ 좋아요 정보는 서비스에서 set 해줌
         return dto;
     }
+
+
 
 
 

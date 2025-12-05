@@ -6,6 +6,7 @@ import com.ecommerce.project.backend.domain.ProductOption;
 import com.ecommerce.project.backend.dto.OptionDto;
 import com.ecommerce.project.backend.dto.ProductDetailResponseDto;
 import com.ecommerce.project.backend.dto.ProductDto;
+import com.ecommerce.project.backend.dto.ProductOptionDto;
 import com.ecommerce.project.backend.repository.*;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
@@ -172,20 +173,23 @@ public class ProductService {
     /**
      * 상품 수정
      */
-    public Product updateProduct(Long productId, Product product) {
+    public Product updateProduct(Long productId, ProductDto productDto) {
         Product existingProduct = productRepository.findById(productId)
                 .orElseThrow(() -> new IllegalArgumentException("상품을 찾을 수 없습니다. ID: " + productId));
 
         // 상품 정보 수정
-        existingProduct.updateProductInfo(product);
+        existingProduct.updateProductInfo(productDto);
 
         // 기존 옵션 삭제 후 새 옵션 추가
-        if (product.getIsOption() != null && product.getIsOption()) {
-            List<ProductOption> options = product.getOptions();
-            productOptionRepository.deleteAllByProduct_ProductId(productId); // 기존 옵션 삭제
-            options.forEach(option -> {
-                option.setProduct(existingProduct); // 상품에 연결된 옵션 설정
-                productOptionRepository.save(option); // 새 옵션 저장
+        if (productDto.getIsOption() != null && productDto.getIsOption()) {
+            List<ProductOptionDto> options = productDto.getOptions();
+
+            // 기존 옵션 삭제
+            productOptionRepository.deleteAllByProduct_ProductId(productId);
+
+            options.forEach(optionDto -> {
+                ProductOption option = optionDto.toEntity(productRepository);  // productId로 Product 객체 찾아서 연결
+                productOptionRepository.save(option);  // 새 옵션 저장
             });
         }
 

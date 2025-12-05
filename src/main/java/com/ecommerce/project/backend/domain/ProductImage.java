@@ -36,6 +36,7 @@ public class ProductImage {
     @JoinColumn(name = "product_id", nullable = false)
     private Product product;
 
+
     public ProductImage(String imageUrl, Product product) {
         this.imageUrl = imageUrl;
         this.product = product;
@@ -62,6 +63,8 @@ public class ProductImage {
 //        this.product = product;
 //    }
 
+//    public ProductImage() {}
+
     public long getProductId() {
         return product.getProductId();
     }
@@ -78,7 +81,12 @@ public class ProductImage {
         return product;
     }
 
+    public void setProduct(Product product) {
+        this.product = product;  // Product와 연결
+    }
 
-
+    public void setImageUrl(String imageUrl) {
+        this.imageUrl = imageUrl;  // imageUrl 수정용 setter
+    }
 
 }
