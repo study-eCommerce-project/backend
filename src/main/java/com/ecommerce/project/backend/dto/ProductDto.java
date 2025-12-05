@@ -1,6 +1,7 @@
 package com.ecommerce.project.backend.dto;
 
 import com.ecommerce.project.backend.domain.Product;
+import com.ecommerce.project.backend.domain.ProductOption;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.*;
 
@@ -34,7 +35,7 @@ public class ProductDto {
     private Timestamp createdAt;
     private Timestamp updatedAt;
 
-    private List<String> subImages;
+    private List<ProductImageDto> subImages;
     private List<ProductOptionDto> options;
 
     private String categoryCode;
@@ -70,12 +71,14 @@ public class ProductDto {
         }
 
         // 서브 이미지 URL
-        List<String> subImageList = new ArrayList<>();
+        List<ProductImageDto> subImageList = new ArrayList<>();
         if (p.getImages() != null) {
             subImageList = p.getImages().stream()
-                    .map(img -> img.getImageUrl().startsWith("/") ?
-                            baseUrl + img.getImageUrl() :
-                            baseUrl + "/" + img.getImageUrl())
+                    .map(img -> new ProductImageDto(
+                            img.getImageUrl().startsWith("/") ? baseUrl + img.getImageUrl() : baseUrl + "/" + img.getImageUrl(),
+                            img.getSortOrder(),
+                            img.getProductId()
+                    ))
                     .collect(Collectors.toList());
         }
 
@@ -101,6 +104,8 @@ public class ProductDto {
         // ⭐ 좋아요 정보는 서비스에서 set 해줌
         return dto;
     }
+
+    
 
 }
 

@@ -1,5 +1,6 @@
 package com.ecommerce.project.backend.domain;
 
+import com.ecommerce.project.backend.dto.ProductDto;
 import jakarta.persistence.*;
 import lombok.*;
 import java.math.BigDecimal;
@@ -85,16 +86,16 @@ public class Product {
         this.stock -= quantity;
     }
 
-    /** 단일 상품 재고 수정 (관리자용) */
-    public void updateStock(int newStock) {
-        if (isOption) {
-            throw new IllegalStateException("옵션 상품은 옵션별로 재고를 수정해야 합니다.");
-        }
-        if (newStock < 0) {
-            throw new IllegalArgumentException("재고는 음수가 될 수 없습니다.");
-        }
-        this.stock = newStock;
-    }
+//    /** 단일 상품 재고 수정 (관리자용) */
+//    public void updateStock(int newStock) {
+//        if (isOption) {
+//            throw new IllegalStateException("옵션 상품은 옵션별로 재고를 수정해야 합니다.");
+//        }
+//        if (newStock < 0) {
+//            throw new IllegalArgumentException("재고는 음수가 될 수 없습니다.");
+//        }
+//        this.stock = newStock;
+//    }
 
     /** 옵션 상품 재고 합산 (옵션 상품일 경우 호출) */
     public void updateTotalStockFromOptions() {
@@ -115,11 +116,6 @@ public class Product {
         this.sellPrice = newSellPrice;
     }
 
-    // 상품 상세 설명
-    public void updateDescription(String description) {
-
-        this.description = description;
-    }
 
     public void setStock(Integer stock) {
         this.stock = stock;
@@ -127,6 +123,7 @@ public class Product {
 
     // 품절 상태 변경
     public void setProductStatus(Integer status) {
+
         this.productStatus = status;
     }
 
@@ -140,6 +137,70 @@ public class Product {
     }
 
     public List<ProductOption> getOptions() {
+
         return productOptions;
     }
+
+
+    // 상품 정보 수정 메서드
+    public void updateProductInfo(Product product) {
+        this.productName = product.getProductName();
+        this.sellPrice = product.getSellPrice();
+        this.consumerPrice = product.getConsumerPrice();
+        this.stock = product.getStock();
+    }
+
+
+    // 옵션 상태 변경시 stock 갱신
+    /*
+    * isShow 상태가 변경될 때 호출되어,
+    * 해당 옵션의 상태를 변경하고, 변경된 옵션의 stock을 기준으로
+    * 상품의 총 재고(stock)를 갱신
+    */
+    public void updateOptionVisibilityAndStock(Long optionId, boolean isShow) {
+        // 옵션을 찾음
+        ProductOption option = this.productOptions.stream()
+                .filter(opt -> opt.getProductOptionId().equals(optionId))
+                .findFirst()
+                .orElseThrow(() -> new IllegalArgumentException("해당 옵션을 찾을 수 없습니다."));
+
+        // 상태 변경
+        option.setIsShow(isShow);
+
+        // 옵션의 재고가 변경되었을 때 총 재고 업데이트
+        updateTotalStockFromOptions();
+    }
+
+    public List<ProductImage> getSubImages() {
+        return this.images; // 연결된 이미지 리스트 반환
+    }
+
+    // Product 생성자에서 ProductDto를 받도록 수정
+    public Product(ProductDto dto) {
+        this.productName = dto.getProductName();
+        this.description = dto.getDescription();
+        this.consumerPrice = dto.getConsumerPrice();
+        this.sellPrice = dto.getSellPrice();
+        this.stock = dto.getStock();
+        this.isOption = dto.getIsOption();
+        this.mainImg = dto.getMainImg();
+        this.productStatus = dto.getProductStatus();
+        this.isShow = dto.getIsShow();
+    }
+
+    // ProductDto에서 정보를 받아와 업데이트하는 메서드
+    public void updateProductInfo(ProductDto productDto) {
+        this.productName = productDto.getProductName();
+        this.description = productDto.getDescription();
+        this.consumerPrice = productDto.getConsumerPrice();
+        this.sellPrice = productDto.getSellPrice();
+        this.stock = productDto.getStock();
+        this.isOption = productDto.getIsOption();
+        this.mainImg = productDto.getMainImg();
+        this.productStatus = productDto.getProductStatus();
+        this.isShow = productDto.getIsShow();
+    }
+
+
+
 }
