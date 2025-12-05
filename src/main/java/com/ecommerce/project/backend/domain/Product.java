@@ -49,12 +49,10 @@ public class Product {
     @Column(name = "is_show", nullable = false, columnDefinition = "TINYINT(1) DEFAULT 1")
     private Boolean isShow; // 노출 여부
 
-    @Column(name = "created_at", insertable = false, updatable = false,
-            columnDefinition = "DATETIME DEFAULT CURRENT_TIMESTAMP")
+    @Column(name = "created_at", insertable = false, updatable = false, columnDefinition = "DATETIME DEFAULT CURRENT_TIMESTAMP")
     private Timestamp createdAt;
 
-    @Column(name = "updated_at", insertable = false,
-            columnDefinition = "DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP")
+    @Column(name = "updated_at", insertable = false, columnDefinition = "DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP")
     private Timestamp updatedAt;
 
     // product_image (1:N 매핑)
@@ -97,14 +95,12 @@ public class Product {
     public void updateTotalStockFromOptions() {
         if (!isOption) return; // 단일상품이면 패스
 
-        int totalStock = productOptions.stream() // `options`를 `productOptions`로 수정
+        int totalStock = productOptions.stream()
                 .mapToInt(ProductOption::getStock)
                 .sum();
 
         this.stock = totalStock;
     }
-
-
 
     /** 판매가 수정 */
     public void updateSellPrice(BigDecimal newSellPrice) {
@@ -114,17 +110,14 @@ public class Product {
         this.sellPrice = newSellPrice;
     }
 
-
     public void setStock(Integer stock) {
         this.stock = stock;
     }
 
     // 품절 상태 변경
     public void setProductStatus(Integer status) {
-
         this.productStatus = status;
     }
-
 
     // 옵션값을 기준으로 ProductOption을 찾는 메서드
     public ProductOption getOptionByValue(String optionValue) {
@@ -135,42 +128,20 @@ public class Product {
     }
 
     public List<ProductOption> getOptions() {
-
         return productOptions;
     }
 
-
     // 상품 정보 수정 메서드
-    public void updateProductInfo(Product product) {
-        this.productName = product.getProductName();
-        this.sellPrice = product.getSellPrice();
-        this.consumerPrice = product.getConsumerPrice();
-        this.stock = product.getStock();
-    }
-
-
-    // 옵션 상태 변경시 stock 갱신
-    /*
-    * isShow 상태가 변경될 때 호출되어,
-    * 해당 옵션의 상태를 변경하고, 변경된 옵션의 stock을 기준으로
-    * 상품의 총 재고(stock)를 갱신
-    */
-    public void updateOptionVisibilityAndStock(Long optionId, boolean isShow) {
-        // 옵션을 찾음
-        ProductOption option = this.productOptions.stream()
-                .filter(opt -> opt.getProductOptionId().equals(optionId))
-                .findFirst()
-                .orElseThrow(() -> new IllegalArgumentException("해당 옵션을 찾을 수 없습니다."));
-
-        // 상태 변경
-        option.setIsShow(isShow);
-
-        // 옵션의 재고가 변경되었을 때 총 재고 업데이트
-        updateTotalStockFromOptions();
-    }
-
-    public List<ProductImage> getSubImages() {
-        return this.images; // 연결된 이미지 리스트 반환
+    public void updateProductInfo(ProductDto productDto) {
+        this.productName = productDto.getProductName();
+        this.description = productDto.getDescription();
+        this.consumerPrice = productDto.getConsumerPrice();
+        this.sellPrice = productDto.getSellPrice();
+        this.stock = productDto.getStock();
+        this.isOption = productDto.getIsOption();
+        this.mainImg = productDto.getMainImg();
+        this.productStatus = productDto.getProductStatus();
+        this.isShow = productDto.getIsShow();
     }
 
     // Product 생성자에서 ProductDto를 받도록 수정
@@ -186,19 +157,37 @@ public class Product {
         this.isShow = dto.getIsShow();
     }
 
-    // ProductDto에서 정보를 받아와 업데이트하는 메서드
-    public void updateProductInfo(ProductDto productDto) {
-        this.productName = productDto.getProductName();
-        this.description = productDto.getDescription();
-        this.consumerPrice = productDto.getConsumerPrice();
-        this.sellPrice = productDto.getSellPrice();
-        this.stock = productDto.getStock();
-        this.isOption = productDto.getIsOption();
-        this.mainImg = productDto.getMainImg();
-        this.productStatus = productDto.getProductStatus();
-        this.isShow = productDto.getIsShow();
+    // ProductDto로부터 정보를 받아와 객체를 새로 생성하는 메서드
+    public static Product fromDto(ProductDto dto) {
+        return Product.builder()
+                .productName(dto.getProductName())
+                .description(dto.getDescription())
+                .consumerPrice(dto.getConsumerPrice())
+                .sellPrice(dto.getSellPrice())
+                .stock(dto.getStock())
+                .isOption(dto.getIsOption())
+                .mainImg(dto.getMainImg())
+                .productStatus(dto.getProductStatus())
+                .isShow(dto.getIsShow())
+                .build();
     }
 
+    // 기존 값을 업데이트 할 때, Builder 패턴을 사용할 수 있는 방식
+    public Product updateUsingBuilder(ProductDto productDto) {
+        return Product.builder()
+                .productName(productDto.getProductName())
+                .description(productDto.getDescription())
+                .consumerPrice(productDto.getConsumerPrice())
+                .sellPrice(productDto.getSellPrice())
+                .stock(productDto.getStock())
+                .isOption(productDto.getIsOption())
+                .mainImg(productDto.getMainImg())
+                .productStatus(productDto.getProductStatus())
+                .isShow(productDto.getIsShow())
+                .build();
+    }
 
-
+    public List<ProductImage> getSubImages() {
+        return this.images; // 연결된 이미지 리스트 반환
+    }
 }

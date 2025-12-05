@@ -1,7 +1,7 @@
 package com.ecommerce.project.backend.service;
 
+import com.ecommerce.project.backend.config.MusinsaConfig;
 import com.ecommerce.project.backend.domain.*;
-import com.ecommerce.project.backend.dto.OptionDto;
 import com.ecommerce.project.backend.dto.ProductDto;
 import com.ecommerce.project.backend.dto.ProductImageDto;
 import com.ecommerce.project.backend.dto.ProductOptionDto;
@@ -10,8 +10,6 @@ import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
-import java.math.BigDecimal;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
@@ -26,8 +24,28 @@ public class AdminProductService {
     private final ProductImageRepository productImageRepository;
     private final CategoryRepository categoryRepository;
     private final CategoryLinkRepository categoryLinkRepository;
+    private Product product;
+    private final MusinsaConfig musinsaConfig;
 
-    /** 상품 등록 */
+    /**
+     * BASE_URL을 제거하는 메서드
+     *
+     * @param imageUrl: 전체 이미지 URL (예: https://image.msscdn.net/thumbnails/images/goods_img/...)
+     * @return BASE_URL이 제거된 이미지 경로 (예: /thumbnails/images/goods_img/...)
+     */
+    private String removeBaseUrl(String imageUrl) {
+        String baseUrl = musinsaConfig.getImageBaseUrl();
+
+        if (imageUrl != null && imageUrl.startsWith(baseUrl)) {
+            return imageUrl.substring(baseUrl.length());  // BASE_URL을 제거한 나머지 경로 반환
+        }
+
+        return imageUrl;  // 만약 BASE_URL이 없다면 원래 URL을 그대로 반환
+    }
+
+    /**
+     * 상품 등록
+     */
     public Product createProduct(ProductDto productDto) {
 
         // 1. 상품 유효성 검사
@@ -96,101 +114,105 @@ public class AdminProductService {
 
         return savedProduct;  // 저장된 Product 반환
     }
+
+    /**
+     * 상품 수정
+     */
+    public Product updateProduct(Long productId, ProductDto productDto) {
+
+        // 1. 기존 상품 조회
+        Product existingProduct = productRepository.findById(productId)
+                .orElseThrow(() -> new RuntimeException("상품을 찾을 수 없습니다."));
+
+        // 2. 상품 유효성 검사 (재고, 가격 등)
+        if (productDto.getStock() < 0) {
+            throw new IllegalArgumentException("재고는 음수가 될 수 없습니다.");
+        }
+        if (productDto.getSellPrice().compareTo(productDto.getConsumerPrice()) > 0) {
+            throw new IllegalArgumentException("판매가는 소비자가보다 높을 수 없습니다.");
+        }
+
+        // 3. 상품의 메인 이미지 URL에서 BASE_URL 제거
+        String imageUrl = productDto.getMainImg();  // 상품 DTO에서 이미지 URL 가져오기
+        String dbImageUrl = removeBaseUrl(imageUrl);  // BASE_URL 제거
+        productDto.setMainImg(dbImageUrl);  // 수정된 URL을 DTO에 반영
+
+        // 4. 기존 상세 이미지 삭제 처리 (이미지 ID를 받아서 처리)
+        if (productDto.getSubImagesToDelete() != null && !productDto.getSubImagesToDelete().isEmpty()) {
+            productImageRepository.deleteAllByImageIdIn(productDto.getSubImagesToDelete());  // 삭제할 이미지 ID 리스트로 삭제
+        }
+
+        // 5. 상품 이미지 테이블에서 이미지 URL 처리
+        List<ProductImage> productImages = productImageRepository.findByProduct_ProductIdOrderBySortOrderAsc(productId);
+        productImages.forEach(productImage -> {
+            String imageUrlInProductImage = productImage.getImageUrl();  // ProductImage 테이블에서 이미지 URL 가져오기
+            String updatedImageUrl = removeBaseUrl(imageUrlInProductImage);  // BASE_URL 제거
+            productImage.setImageUrl(updatedImageUrl);  // 수정된 URL을 저장
+        });
+
+        // 6. 상세 이미지 처리 (subImages 처리)
+        if (productDto.getSubImages() != null && !productDto.getSubImages().isEmpty()) {
+            int sortOrder = 2;  // 상세 이미지의 시작 sortOrder 값 (1은 대표 이미지 사용)
+
+            // 기존의 상세 이미지들을 삭제하고 새로운 이미지들 추가
+            productImageRepository.deleteAllByProduct_ProductId(productId);  // 기존 이미지 삭제
+
+            for (ProductImageDto productImageDto : productDto.getSubImages()) {
+                // subImages가 String의 리스트이므로, URL에서 BASE_URL을 제거한 후 저장
+                String imageUrlInSubImage = removeBaseUrl(productImageDto.getImageUrl());  // BASE_URL 제거
+                ProductImage productImage = productImageDto.toEntity(existingProduct);  // DTO -> Entity 변환
+                productImage.setImageUrl(imageUrlInSubImage);  // 이미지 URL 업데이트
+                productImageRepository.save(productImage);  // 이미지 저장
+            }
+        }
+
+        // 7. 상품 옵션 처리
+//        List<ProductOption> options = new ArrayList<>();
+        List<ProductOption> options;
+        AtomicInteger totalStock = new AtomicInteger(0);
+
+        // 기존 옵션 삭제 (옵션이 있으면 삭제)
+        if (productDto.getIsOption() != null && productDto.getIsOption()) {
+            productOptionRepository.deleteAllByProduct_ProductId(productId);  // 기존 옵션 삭제
+
+            // 새 옵션 추가
+            options = productDto.getOptions().stream()
+                    .map(optionDto -> {
+                        totalStock.addAndGet(optionDto.getStock());
+                        return new ProductOption(optionDto, existingProduct);  // DTO -> Entity 변환
+                    })
+                    .collect(Collectors.toList());
+
+            productOptionRepository.saveAll(options);  // 새 옵션 일괄 저장
+        }
+
+        // 8. 총 재고 처리 (옵션 상품일 경우 옵션 재고 합산, 아니면 상품Dto에서 받은 재고로 업데이트)
+        if (existingProduct.getIsOption()) {
+            existingProduct.getOptions().stream()
+                    .forEach(option -> totalStock.addAndGet(option.getStock()));  // 각 옵션의 재고를 더합니다.
+        } else {
+            totalStock.set(existingProduct.getStock());  // 옵션이 없으면 기본 상품의 재고를 설정합니다.
+        }
+
+        // 상품의 총 재고 갱신
+        existingProduct.setStock(totalStock.get());  // AtomicInteger의 값을 상품의 stock에 반영
+
+        // 9. 카테고리 처리 (상품과 연결된 카테고리 수정)
+        List<CategoryLink> categoryLinks = categoryLinkRepository.findByProduct_ProductId(productId);
+        CategoryLink categoryLink = categoryLinks.stream()
+                .findFirst()  // List에서 첫 번째 항목을 가져옵니다.
+                .orElseThrow(() -> new RuntimeException("CategoryLink not found for productId: " + productId));  // 값이 없을 경우 예외 처리
+        CategoryLink updatedCategoryLink = new CategoryLink(categoryLink.getProduct(), productDto.getCategoryCode());
+        categoryLinkRepository.save(updatedCategoryLink);  // 새로운 객체 저장
+
+        // 10. 상품 정보 업데이트 (상품 이름, 가격 등 기본 정보 업데이트)
+        existingProduct.updateProductInfo(productDto);
+
+        // 11. 수정된 상품 저장 (모든 수정 사항을 반영하여 상품 저장)
+        return productRepository.save(existingProduct);  // 수정된 상품 반환
+    }
 }
 
-//    /** 상품 수정 */
-//    @Transactional
-//    public Product updateProduct(Long productId, ProductDto productDto) {
-//        // 기존 상품 조회
-//        Product existingProduct = productRepository.findById(productId)
-//                .orElseThrow(() -> new IllegalArgumentException("상품을 찾을 수 없습니다. ID: " + productId));
-//
-//        // 상품 정보 수정
-//        existingProduct.updateProductInfo(productDto);
-//
-//        // 기존 옵션 삭제 후 새 옵션 추가
-//        if (productDto.getIsOption() != null && productDto.getIsOption()) {
-//            // 기존 옵션 삭제
-//            productOptionRepository.deleteAllByProduct_ProductId(productId);
-//
-//            // 새 옵션 추가
-//            for (OptionDto optionDto : productDto.getOptions()) {
-//                // OptionDto에서 값을 추출하여 ProductOptionDto로 변환
-//                ProductOptionDto optionDto = ProductOptionDto.builder()
-//                        .optionTitle(optionDto.getOptionTitle())
-//                        .optionValue(optionDto.getOptionValue())
-//                        .stock(optionDto.getStock())
-//                        .isShow(optionDto.getIsShow())
-//                        .colorCode(optionDto.getColorCode())
-//                        .sellPrice(optionDto.getSellPrice())
-//                        .consumerPrice(optionDto.getConsumerPrice())
-//                        .productId(existingProduct.getProductId())  // 기존 상품과 연결
-//                        .build();
-//
-//                // ProductOptionDto에서 ProductOption 엔티티로 변환
-//                ProductOption option = new ProductOption(
-//                        optionDto.getOptionTitle(),
-//                        optionDto.getOptionValue(),
-//                        optionDto.getStock(),
-//                        optionDto.getIsShow(),
-//                        optionDto.getColorCode(),
-//                        optionDto.getSellPrice(),
-//                        optionDto.getConsumerPrice(),
-//                        existingProduct // 기존 상품과 연결
-//                );
-//
-//                // 상품 옵션 저장
-//                productOptionRepository.save(option);
-//            }
-//        }
-//
-//
-//        // 기존 이미지 삭제 후 새 이미지 추가
-//        if (productDto.getMainImg() != null && !productDto.getMainImg().isEmpty()) {
-//            // 메인 이미지 저장
-//            ProductImage mainImage = new ProductImage(productDto.getMainImg(), existingProduct);
-//            productImageRepository.save(mainImage);
-//        }
-//
-//        // 서브 이미지 처리 (여러 개의 이미지 추가)
-//        if (productDto.getSubImages() != null && !productDto.getSubImages().isEmpty()) {
-//            // 기존 서브 이미지 삭제
-//            productImageRepository.deleteAllByProduct_ProductId(productId);
-//            // 서브 이미지 추가
-//            int sortOrder = 2;  // 서브 이미지의 시작 sortOrder 값
-//            for (String imageUrl : productDto.getSubImages()) {  // subImages가 String의 리스트
-//                ProductImage productImage = ProductImage.builder()
-//                        .imageUrl(imageUrl)  // imageUrl로 문자열을 전달
-//                        .sortOrder(sortOrder++)  // 순서대로 증가
-//                        .product(existingProduct)  // 상품과 연결
-//                        .build();
-//                productImageRepository.save(productImage);  // 서브 이미지 저장
-//            }
-//        }
-//
-//        // 저장된 상품 업데이트
-//        return productRepository.save(existingProduct);
-//    }
-//
-//    /** 할인가(판매가) 수정 */
-//    public void updateSellPrice(Long productId, BigDecimal newSellPrice) {
-//        Product product = productRepository.findById(productId)
-//                .orElseThrow(() -> new IllegalArgumentException("상품을 찾을 수 없습니다. ID: " + productId));
-//
-//        // 판매가 수정
-//        product.updateSellPrice(newSellPrice);
-//        productRepository.save(product);
-//    }
-//
-//    /** 재고 수정 */
-//    public void updateStock(Long productId, int newStock) {
-//        Product product = productRepository.findById(productId)
-//                .orElseThrow(() -> new IllegalArgumentException("상품을 찾을 수 없습니다. ID: " + productId));
-//
-//        // 재고 수정
-//        product.updateStock(newStock);
-//        productRepository.save(product);
-//    }
 //
 //    /** 상품 삭제 */
 //    public void deleteProduct(Long productId) {
