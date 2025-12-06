@@ -14,6 +14,9 @@ import java.util.Optional;
 @Repository
 public interface ProductRepository extends JpaRepository<Product, Long> {
 
+    //관리자용 전체 조회
+    List<Product> findAll();
+
     // 상품명 검색
     List<Product> findByProductNameContaining(String keyword);
 

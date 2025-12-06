@@ -24,7 +24,9 @@ public class AdminProductService {
     private final ProductImageRepository productImageRepository;
     private final CategoryRepository categoryRepository;
     private final CategoryLinkRepository categoryLinkRepository;
+    private final CartRepository cartRepository;
     private Product product;
+
     private final MusinsaConfig musinsaConfig;
 
     /**
@@ -211,16 +213,36 @@ public class AdminProductService {
         // 11. 수정된 상품 저장 (모든 수정 사항을 반영하여 상품 저장)
         return productRepository.save(existingProduct);  // 수정된 상품 반환
     }
+
+
+
+    @Transactional
+    public void deleteProduct(Long productId) {
+
+        // 1) 존재 여부 확인
+        Product product = productRepository.findById(productId)
+                .orElseThrow(() -> new IllegalArgumentException("삭제할 상품이 존재하지 않습니다. ID: " + productId));
+
+        // 2) 장바구니 참조 여부 확인
+        if (cartRepository.existsByProduct_ProductId(productId)) {
+            throw new IllegalStateException("해당 상품이 사용자의 장바구니에 있어 삭제할 수 없습니다.");
+        }
+
+        // 3) 옵션 삭제
+        productOptionRepository.deleteAllByProduct_ProductId(productId);
+
+        // 4) 이미지 삭제
+        productImageRepository.deleteAllByProduct_ProductId(productId);
+
+        // 5) 카테고리 링크 삭제
+        categoryLinkRepository.deleteAllByProduct_ProductId(productId);
+
+        // 6) 상품 삭제
+        productRepository.delete(product);
+    }
+
+    public List<Product> getAdminProductList() {
+        return productRepository.findAll();  // ★ 숨김 여부 상관없이 전체 조회
+    }
+
 }
-
-//
-//    /** 상품 삭제 */
-//    public void deleteProduct(Long productId) {
-//        if (!productRepository.existsById(productId)) {
-//            throw new IllegalArgumentException("삭제할 상품이 존재하지 않습니다. ID: " + productId);
-//        }
-//        productRepository.deleteById(productId);
-//    }
-
-
-//}

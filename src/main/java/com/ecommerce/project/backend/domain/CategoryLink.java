@@ -1,5 +1,6 @@
 package com.ecommerce.project.backend.domain;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -19,6 +20,7 @@ public class CategoryLink {
     // 상품 테이블 FK
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "product_id", nullable = false)
+    @JsonIgnore
     private Product product; // 상품 참조
 
     // 단순 코드 문자열 (FK 아님)

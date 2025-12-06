@@ -6,6 +6,7 @@ import com.ecommerce.project.backend.repository.CategoryRepository;
 import com.ecommerce.project.backend.service.AdminProductService;
 import com.ecommerce.project.backend.domain.Product;
 import com.ecommerce.project.backend.domain.ProductOption;
+import com.ecommerce.project.backend.service.ProductService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -66,6 +67,17 @@ public class AdminProductController {
         }
     }
 
+    @DeleteMapping("/{productId}/delete")
+    public ResponseEntity<?> deleteProduct(@PathVariable Long productId) {
+        adminProductService.deleteProduct(productId);
+        return ResponseEntity.ok("deleted");
+    }
+
+
+    @GetMapping("/list")
+    public ResponseEntity<?> getAdminProductList() {
+        return ResponseEntity.ok(adminProductService.getAdminProductList());
+    }
 
 
 //    // ------------------------------------------
