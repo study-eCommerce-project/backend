@@ -77,4 +77,15 @@ public class AdminProductController {
 
         return ResponseEntity.ok(Map.of("description", desc));
     }
+
+    @DeleteMapping("/{productId}/delete")
+    public ResponseEntity<?> deleteProduct(@PathVariable Long productId) {
+        adminProductService.deleteProduct(productId);
+        return ResponseEntity.ok("deleted");
+    }
+
+    @GetMapping("/list")
+    public ResponseEntity<?> getAdminProductList() {
+        return ResponseEntity.ok(adminProductService.getAdminProductList());
+    }
 }

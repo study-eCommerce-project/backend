@@ -3,6 +3,7 @@ package com.ecommerce.project.backend.domain;
 import com.ecommerce.project.backend.dto.ProductDto;
 import com.ecommerce.project.backend.dto.ProductOptionDto;
 import com.fasterxml.jackson.annotation.JsonBackReference;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonManagedReference;
 import jakarta.persistence.*;
@@ -26,9 +27,11 @@ public class ProductOption {
     @Column(name = "option_id")  // PK 명시
     private Long optionId; // 옵션 고유 번호 (PK)
 
-    @ManyToOne(cascade = CascadeType.ALL)
+//    @ManyToOne(cascade = CascadeType.ALL)
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "product_id", nullable = false)
-    @JsonBackReference
+//    @JsonBackReference
+    @JsonIgnore
     private Product product; // 어떤 상품의 옵션인지 (FK)
 
     @Column(name = "consumer_price", precision = 10, scale = 2)

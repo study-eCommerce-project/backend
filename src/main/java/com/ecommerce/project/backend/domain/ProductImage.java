@@ -2,6 +2,7 @@ package com.ecommerce.project.backend.domain;
 
 import com.ecommerce.project.backend.dto.ProductImageDto;
 import com.ecommerce.project.backend.repository.ProductRepository;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -34,6 +35,7 @@ public class ProductImage {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "product_id", nullable = false)
+    @JsonIgnore
     private Product product;
 
 

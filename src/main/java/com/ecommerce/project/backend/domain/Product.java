@@ -63,6 +63,7 @@ public class Product {
 
     // 옵션 상품 (1:N 매핑)
     @OneToMany(mappedBy = "product", cascade = CascadeType.ALL, orphanRemoval = true)
+    @Builder.Default
     private List<ProductOption> productOptions = new ArrayList<>(); // 상품 옵션
 
     //CategoryLink

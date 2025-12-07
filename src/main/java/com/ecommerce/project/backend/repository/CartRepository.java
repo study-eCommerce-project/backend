@@ -38,4 +38,7 @@ public interface CartRepository extends JpaRepository<Cart, Long> {
             @Param("cartId") Long cartId,
             @Param("memberId") Long memberId);
 
+    boolean existsByProduct_ProductId(Long productId);
+
+
 }
