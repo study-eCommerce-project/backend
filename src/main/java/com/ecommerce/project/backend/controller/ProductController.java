@@ -1,8 +1,10 @@
 package com.ecommerce.project.backend.controller;
 
 import com.ecommerce.project.backend.domain.Member;
+import com.ecommerce.project.backend.domain.Product;
 import com.ecommerce.project.backend.dto.ProductDto;
 import com.ecommerce.project.backend.dto.ProductDetailResponseDto;
+import com.ecommerce.project.backend.dto.ProductListDto;
 import com.ecommerce.project.backend.service.ProductService;
 import jakarta.servlet.http.HttpSession;
 import lombok.RequiredArgsConstructor;
@@ -23,6 +25,18 @@ public class ProductController {
     public ResponseEntity<?> getProductListLite() {
         return ResponseEntity.ok(productService.getProductListLite());
     }
+
+//    @PutMapping("/{productId}")
+//    public ResponseEntity<?> updateProduct(@PathVariable Long productId, @RequestBody ProductDto productDto) {
+//        // 상품 수정
+//        Product updatedProduct = productService.updateProduct(productId, productDto);
+//
+//        // 수정된 상품 목록 반환 (홈 화면에 사용되는 가벼운 목록)
+//        List<ProductListDto> updatedProductList = productService.getProductListLite();
+//
+//        return ResponseEntity.ok(updatedProductList);  // 최신 상품 목록을 클라이언트에 반환
+//    }
+
 
     /** 전체 + 카테고리별 상품 조회 */
     @GetMapping

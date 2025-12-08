@@ -179,15 +179,19 @@ public class AdminProductService {
 
         // 기존 옵션 삭제 (옵션이 있으면 삭제)
         if (productDto.getIsOption() != null && productDto.getIsOption()) {
+            System.out.println("기존 옵션 삭제 시작");
             productOptionRepository.deleteAllByProduct_ProductId(productId);  // 기존 옵션 삭제
+            System.out.println("기존 옵션 삭제 완료");
 
             // 새 옵션 추가
+            System.out.println("새 옵션 추가 시작");
             options = productDto.getOptions().stream()
                     .map(optionDto -> {
                         totalStock.addAndGet(optionDto.getStock());
                         return new ProductOption(optionDto, existingProduct);  // DTO -> Entity 변환
                     })
                     .collect(Collectors.toList());
+            System.out.println("새 옵션 추가 완료, 옵션 개수: " + options.size());
 
             productOptionRepository.saveAll(options);  // 새 옵션 일괄 저장
         }
