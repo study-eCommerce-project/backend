@@ -14,28 +14,26 @@ public class AiDescriptionService {
 
     private final WebClient aiWebClient; // WebClientConfig에서 만든 Bean 자동 주입
 
-    public Response generateDescription(AiProductRequestDto req) {
+    public AiResponse generateDescription(AiProductRequestDto req) {
 
-        Response res = aiWebClient.post()
+        return aiWebClient.post()
                 .uri("/ai/description")
                 .bodyValue(req)
                 .retrieve()
-                .bodyToMono(Response.class)
+                .bodyToMono(AiResponse.class)
                 .block();
-
-        return res;
     }
 
     @Data
-    public static class Response {
-        private List<Block> blocks;
+    public static class AiResponse {
+        private String description;   // FastAPI에서 온 설명
+        private List<Block> blocks;   // 이미지/텍스트 블록
 
         @Data
         public static class Block {
-            private String type;    // "text" or "image"
-            private String content; // 텍스트일 때
-            private String url;     // 이미지일 때
+            private String type;
+            private String content;
+            private String url;
         }
     }
-
 }

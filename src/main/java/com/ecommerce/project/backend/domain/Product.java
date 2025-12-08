@@ -191,4 +191,6 @@ public class Product {
     public List<ProductImage> getSubImages() {
         return this.images; // 연결된 이미지 리스트 반환
     }
+
+
 }
