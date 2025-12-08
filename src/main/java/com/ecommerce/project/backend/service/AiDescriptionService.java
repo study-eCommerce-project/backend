@@ -6,13 +6,15 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
 
+import java.util.List;
+
 @Service
 @RequiredArgsConstructor
 public class AiDescriptionService {
 
     private final WebClient aiWebClient; // WebClientConfig에서 만든 Bean 자동 주입
 
-    public String generateDescription(AiProductRequestDto req) {
+    public Response generateDescription(AiProductRequestDto req) {
 
         Response res = aiWebClient.post()
                 .uri("/ai/description")
@@ -21,11 +23,19 @@ public class AiDescriptionService {
                 .bodyToMono(Response.class)
                 .block();
 
-        return res.getDescription();
+        return res;
     }
 
     @Data
     public static class Response {
-        private String description;
+        private List<Block> blocks;
+
+        @Data
+        public static class Block {
+            private String type;    // "text" or "image"
+            private String content; // 텍스트일 때
+            private String url;     // 이미지일 때
+        }
     }
+
 }
