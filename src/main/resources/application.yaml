@@ -46,6 +46,9 @@ server:
     session:
       # 세션 만료 시간 무제한 (필요 시 수정 가능)
       timeout: -1
+      cookie:
+        same-site: none
+        secure: true
 
 # ----------------------------------------------------
 # 무신사 이미지 기반 URL 설정
@@ -63,5 +66,5 @@ musinsa:
 # - secret: 결제 조회/검증 시 필요한 API Secret
 # --------------------------------------------------
 portone:
-  store-id: ${STORE-ID}
+  store-id: ${STORE_ID}
   secret: ${SECRET}

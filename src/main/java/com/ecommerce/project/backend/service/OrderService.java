@@ -27,6 +27,13 @@ public class OrderService {
     private final MemberAddressRepository memberAddressRepository;
     private final MusinsaConfig musinsaConfig;
 
+
+
+    // 주문 번호 생성
+    String date = LocalDate.now().format(DateTimeFormatter.ofPattern("yyyyMMdd"));
+    String random = UUID.randomUUID().toString().substring(0, 6);
+    String orderNum = "YDJ-" + date + "-" + random;
+
     @Transactional
     public OrderDto checkout(Long memberId, OrderRequestDTO req) {
 
@@ -35,9 +42,6 @@ public class OrderService {
 
         MemberAddress address = memberAddressRepository.findById(req.getAddressId())
                 .orElseThrow(() -> new RuntimeException("배송지 없음"));
-
-        // 주문 번호 생성
-        String orderNum = "ORD-" + UUID.randomUUID().toString().substring(0, 8);
 
         List<OrderItemDto> itemDtos = new ArrayList<>();
         BigDecimal totalPrice = BigDecimal.ZERO;
@@ -341,7 +345,6 @@ public class OrderService {
             totalPrice = totalPrice.add(price.multiply(BigDecimal.valueOf(quantity)));
         }
 
-        // READY 상태 주문 생성
         Order order = orderRepository.save(
                 Order.builder()
                         .member(member)
@@ -350,9 +353,10 @@ public class OrderService {
                         .address(address.getAddress())
                         .addressDetail(address.getDetail())
                         .zipcode(address.getZipcode())
-                        .orderNumber("ORD-" + UUID.randomUUID().toString().substring(0, 8))
+                        .orderNumber(orderNum)
                         .totalPrice(totalPrice)
                         .paymentMethod("CARD")
+
                         .status("READY")
                         .build()
         );

@@ -16,20 +16,13 @@ import java.util.Optional;
 public interface ProductRepository extends JpaRepository<Product, Long> {
 
     // 목록 전용 DTO 조회
-    @Query("""
-        select new com.ecommerce.project.backend.dto.ProductListDto(
-            p.productId,
-            p.productName,
-            p.sellPrice,
-            p.consumerPrice,
-            p.mainImg
-        )
-        from Product p
-        where p.isShow = true
-        order by p.productId asc
-    """)
+    @Query("SELECT new com.ecommerce.project.backend.dto.ProductListDto(" +
+            "p.productId, p.productName, p.sellPrice, p.consumerPrice, p.mainImg, c.categoryCode) " +
+            "FROM Product p " +
+            "JOIN CategoryLink c ON p.productId = c.product.productId " +
+            "WHERE p.isShow = true")
     List<ProductListDto> findProductList();
-
+    
     //관리자용 전체 조회
     List<Product> findAll();
 

@@ -8,6 +8,7 @@ import java.math.BigDecimal;
 @Getter
 public class ProductListDto {
 
+    private String categoryCode;
     private Long productId;
     private String productName;
     private BigDecimal sellPrice;
@@ -19,12 +20,14 @@ public class ProductListDto {
             String productName,
             BigDecimal sellPrice,
             BigDecimal consumerPrice,
-            String mainImg
+            String mainImg,
+            String categoryCode
     ) {
         this.productId = productId;
         this.productName = productName;
         this.sellPrice = sellPrice;
         this.consumerPrice = consumerPrice;
+        this.categoryCode = categoryCode;
 
         // ⭐ 자동 이미지 최적화: w=1200 → w=300
         if (mainImg != null) {

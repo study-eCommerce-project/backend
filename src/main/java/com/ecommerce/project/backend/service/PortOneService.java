@@ -16,7 +16,7 @@ public class PortOneService {
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     // .env에서 spring-dotenv가 자동으로 environment로 올라간 값 읽기
-    @Value("${STORE-ID}")
+    @Value("${STORE_ID}")
     private String storeId;
 
     @Value("${SECRET}")

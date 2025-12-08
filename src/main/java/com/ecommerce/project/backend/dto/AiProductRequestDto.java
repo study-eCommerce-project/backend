@@ -1,6 +1,7 @@
 package com.ecommerce.project.backend.dto;
 
 import lombok.Data;
+import java.util.List;
 
 @Data
 public class AiProductRequestDto {
@@ -8,5 +9,5 @@ public class AiProductRequestDto {
     private Integer price;
     private String options;
     private String category_path;
-    private String image_url;
+    private List<String> image_urls;
 }
