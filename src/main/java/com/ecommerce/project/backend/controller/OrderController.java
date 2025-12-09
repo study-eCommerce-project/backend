@@ -28,10 +28,25 @@ public class OrderController {
         if (memberId == null)
             return ResponseEntity.status(401).body("NOT_LOGIN");
 
-        OrderDto order = orderService.checkout(memberId, req);
-
-        return ResponseEntity.ok(order);
+        try {
+            // 실제 주문 생성
+            OrderDto order = orderService.checkout(memberId, req);
+            return ResponseEntity.ok(order);
+        }
+        catch (IllegalArgumentException e) {
+            // 비즈니스 예외 (포인트 부족, 재고 부족 등)
+            return ResponseEntity.badRequest().body(e.getMessage());
+        }
+        catch (RuntimeException e) {
+            // 서비스에서 throw new RuntimeException() 한 것들
+            return ResponseEntity.status(400).body(e.getMessage());
+        }
+        catch (Exception e) {
+            // 진짜 예기치 못한 서버 에러
+            return ResponseEntity.status(500).body("서버 오류");
+        }
     }
+
 
     @GetMapping("/history")
     public ResponseEntity<?> getOrderHistory(HttpSession session) {

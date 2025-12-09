@@ -119,7 +119,6 @@ public class CartService {
                 .build();
     }
 
-
     /** -------------------------
      * 장바구니 조회
      * ------------------------- */
@@ -175,7 +174,23 @@ public class CartService {
             }
 
             int price = p.getSellPrice().intValue();
-            boolean soldOut = p.getStock() <= 0;
+
+            // ---- 재고 계산 (옵션 포함) ----
+            final String optValue = (optionValue == null) ? "" : optionValue; // 람다용 final 변수
+            int finalStock;
+
+            if (p.getIsOption()) {
+                ProductOption matchedOption = p.getProductOptions().stream()
+                        .filter(o -> optValue.equals(o.getOptionValue()))
+                        .findFirst()
+                        .orElse(null);
+
+                finalStock = (matchedOption != null) ? matchedOption.getStock() : 0;
+            } else {
+                finalStock = p.getStock();
+            }
+
+            boolean soldOut = finalStock <= 0;
 
             return CartItemDto.builder()
                     .cartId(cart.getCartId())
@@ -184,8 +199,8 @@ public class CartService {
                     .thumbnail(fullImg)
                     .quantity(cart.getQuantity())
                     .price(price)
-                    .stock(p.getStock())
-                    .soldOut(soldOut)
+                    .stock(finalStock)          // 옵션 재고 적용됨
+                    .soldOut(soldOut)           // 옵션 재고 기준으로 품절
                     .optionValue(optionValue)   // 단품: "", 옵션: "블랙"
                     .optionTitle(optionTitle)   // 단품: "", 옵션: "색상"
                     .build();
@@ -204,7 +219,6 @@ public class CartService {
                 .totalQuantity(totalQty)
                 .build();
     }
-
 
     @Transactional
     public void changeOption(Long memberId, Long cartId, String newOptionValue) {
@@ -256,7 +270,7 @@ public class CartService {
     @Transactional
     public void updateQuantity(Long memberId, Long cartId, int quantity) {
 
-        if (quantity <= 1)
+        if (quantity < 1)
             throw new IllegalArgumentException("수량은 1 이상");
 
         // row-level lock
@@ -290,7 +304,6 @@ public class CartService {
         cart.setQuantity(quantity);
     }
 
-
     /** -------------------------
      * 삭제
      * ------------------------- */
@@ -322,6 +335,23 @@ public class CartService {
         String finalOptionTitle = (optionTitle == null) ? "" : optionTitle;
         String optionValue = (cart.getOptionValue() == null) ? "" : cart.getOptionValue();
 
+        // stock 계산 (옵션 고려)
+        int finalStock;
+
+        // 옵션 상품인 경우 → 옵션별 재고 사용
+        if (product.getIsOption()) {
+            ProductOption matchedOption = product.getProductOptions().stream()
+                    .filter(o -> optionValue.equals(o.getOptionValue()))
+                    .findFirst()
+                    .orElse(null);
+
+            finalStock = (matchedOption != null) ? matchedOption.getStock() : 0;
+
+        } else {
+            // 단품 상품 → 전체 재고 사용
+            finalStock = product.getStock();
+        }
+
         return CartItemDto.builder()
                 .cartId(cart.getCartId())
                 .productId(product.getProductId())
@@ -329,11 +359,10 @@ public class CartService {
                 .thumbnail(product.getMainImg())
                 .quantity(cart.getQuantity())
                 .price(product.getSellPrice().intValue())
-                .stock(product.getStock())
-                .soldOut(product.getStock() <= 0)
+                .stock(finalStock)                // 옵션별 재고를 사용
+                .soldOut(finalStock <= 0)         // 옵션 재고 기준으로 품절 처리
                 .optionValue(optionValue)       // 단품이면 "", 옵션상품이면 "블랙" 같은 값
                 .optionTitle(finalOptionTitle)  // 단품이면 "", 옵션상품이면 "색상"
                 .build();
     }
-
 }
