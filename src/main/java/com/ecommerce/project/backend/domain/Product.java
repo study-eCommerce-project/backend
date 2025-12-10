@@ -114,6 +114,8 @@ public class Product {
     public void setStock(Integer stock) {
         this.stock = stock;
     }
+    public void setMainImg(String mainImg) { this.mainImg = mainImg;  }
+    public void setIsOption(boolean isOption) { this.isOption = isOption; }
 
     // 품절 상태 변경
     public void setProductStatus(Integer status) {
@@ -191,4 +193,6 @@ public class Product {
     public List<ProductImage> getSubImages() {
         return this.images; // 연결된 이미지 리스트 반환
     }
+
+
 }

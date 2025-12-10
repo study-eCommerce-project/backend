@@ -72,7 +72,7 @@ public class AdminProductController {
     /** 관리자 페이지에서 AI 생성 호출 */
     @PostMapping("/generate-description")
     public ResponseEntity<?> generateDescription(@RequestBody AiProductRequestDto req) {
-        AiDescriptionService.Response aiRes = aiDescriptionService.generateDescription(req);
+        AiDescriptionService.AiResponse aiRes = aiDescriptionService.generateDescription(req);
         return ResponseEntity.ok(aiRes);
     }
 
