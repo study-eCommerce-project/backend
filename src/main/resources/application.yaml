@@ -45,7 +45,7 @@ server:
   servlet:
     session:
       # 세션 만료 시간 무제한 (필요 시 수정 가능)
-      timeout: -1
+      timeout: 30m
       cookie:
         same-site: none
         secure: true
